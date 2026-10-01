@@ -1,0 +1,31 @@
+direction: right
+
+outside: Outside {
+  style.stroke-dash: 4
+  style.fill: transparent
+
+  buildsim: Buildsim
+  physics: Physics
+  occupancy: Occupancy
+}
+
+inside: Inside {
+  sensors: Sensors
+  data_storage: Data Storage
+  actuators: Actuators
+  control: Control
+
+  actuators -> data_storage: stores actuator data
+  sensors -> data_storage: stores sensor data
+  data_storage -> control: gives data
+  control -> actuators: commands
+}
+
+outside.physics -> outside.buildsim: apply physics
+outside.occupancy -> outside.buildsim: states occupancy
+
+outside.buildsim -> inside.sensors.CO2: reads CO2 levels
+outside.buildsim -> inside.sensors.temp: reads temperature
+
+inside.actuators.vent -> outside.buildsim: ventilates
+inside.actuators.heat -> outside.buildsim: applys heating
