@@ -1,31 +1,70 @@
-direction: right
+# C4 Level 2 — Container diagram, D7065E Group 2
+# Maps 1:1 to docker-compose.yml and the repo folders.
+# Render (course style):  d2 --theme 4 --layout elk --pad 25 container.d2 container.png
+#
+# Three rules to remember:
+#   1. Between our services everything goes through the broker,
+#      except two HTTP reads from the pipeline (planner, grafana).
+#   2. Everything to and from BuildSim is REST.
+#   3. control never touches BuildSim; physics never talks to the broker.
 
-outside: Outside {
+direction: down
+
+bs: "BuildSim\n[Software System, course-provided]\nShared state: occupancy, sensor values,\nactuator states, 3D viewer" {
+  style.stroke-dash: 4
+  style.fill: "#f3f4f6"
+}
+
+occ: "occupancysim\n[Software System, course-provided]\nSimulated people + simulated clock (60×)" {
+  style.stroke-dash: 4
+  style.fill: "#f3f4f6"
+}
+
+sys: "CO₂ ventilation & climate control  [our system]" {
   style.stroke-dash: 4
   style.fill: transparent
 
-  buildsim: Buildsim
-  physics: Physics
-  occupancy: Occupancy
+  physics: "physics\n[Container: Python]\nGround-truth CO₂ + temperature per room"
+  sensor: "sensor-{co2,temp}-{room}  ×10\n[Container: Python]\nSample truth, add lag, noise, faults"
+  counter: "occupancy_counter\n[Container: Python]\nHead count per room as a sensor"
+  broker: "broker\n[Container: Mosquitto / MQTT]\nPub/sub, QoS 1, retained messages" {
+    shape: queue
+  }
+  control: "control\n[Container: Python]\nReactive rules + safety clamp\n(fast loop, the autonomous decision)"
+  planner: "planner\n[Container: Python + numpy]\n30-min occupancy forecast\n(slow loop, may only raise)"
+  actuator: "actuator-{vent,heat}-{room}  ×10\n[Container: Python]\nValidate, rate-limit, apply, report"
+  pipeline: "pipeline\n[Container: Python + DuckDB]\nJSONL → Parquet, history + query API" {
+    shape: cylinder
+  }
+  viewer: "viewer\n[Container: Python]\nOnly writer of room layers + alerts"
+  grafana: "grafana\n[Container: Grafana]\nTime-series dashboard"
 }
 
-inside: Inside {
-  sensors: Sensors
-  data_storage: Data Storage
-  actuators: Actuators
-  control: Control
+# ── the closed loop ──
+occ -> bs: "People positions [REST PUT]"
+bs -> sys.physics: "Occupancy + actuator states [REST GET]\nthis read-back closes the loop"
+sys.physics -> sys.sensor: "True value [REST GET /rooms/{room}]"
+sys.sensor -> sys.broker: "Reading [MQTT …/sensor/<type>]"
+sys.broker -> sys.control: "Readings + plans [MQTT]"
+sys.control -> sys.broker: "Command + decision [MQTT …/cmd, …/decision]"
+sys.broker -> sys.actuator: "Command [MQTT …/cmd]"
+sys.actuator -> bs: "Reached state [REST PUT /api/actuators/{id}/state]"
 
-  actuators -> data_storage: stores actuator data
-  sensors -> data_storage: stores sensor data
-  data_storage -> control: gives data
-  control -> actuators: commands
-}
+# ── observation ──
+sys.sensor -> bs: "Measured value for the 3D view [REST PUT]"
+sys.actuator -> sys.broker: "Reached state [MQTT …/state, retained]"
+bs -> sys.counter: "Occupancy [REST GET]"
+sys.counter -> sys.broker: "Head count [MQTT …/sensor/occupancy]"
 
-outside.physics -> outside.buildsim: apply physics
-outside.occupancy -> outside.buildsim: states occupancy
+# ── data and planning ──
+sys.broker -> sys.pipeline: "Everything [MQTT bldg/#]"
+sys.pipeline -> sys.planner: "History [HTTP GET /history]"
+sys.planner -> sys.broker: "Plan [MQTT …/plan, retained]"
+sys.pipeline -> sys.grafana: "Time series [HTTP /query]"
 
-outside.buildsim -> inside.sensors.CO2: reads CO2 levels
-outside.buildsim -> inside.sensors.temp: reads temperature
+# ── presentation ──
+sys.broker -> sys.viewer: "Readings, decisions, health [MQTT]"
+sys.viewer -> bs: "Room layers + alerts [REST PUT]"
 
-inside.actuators.vent -> outside.buildsim: ventilates
-inside.actuators.heat -> outside.buildsim: applys heating
+# ── time ──
+occ -> sys.physics: "Simulated clock [REST GET /api/state]\nalso read by control + planner"
