@@ -1,0 +1,62 @@
+{
+  "title": "D7065E — CO₂ ventilation (Group 2)",
+  "uid": "d7065e-vent",
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": {"from": "now-15m", "to": "now"},
+  "templating": {"list": [{"name": "room", "type": "custom", "query": "A109,A117,A110,A323,A113C", "current": {"text": "A109", "value": "A109"}, "options": []}]},
+  "panels": [
+    {
+      "id": 1, "type": "timeseries", "title": "CO₂ observed — $room (ppm)",
+      "gridPos": {"x": 0, "y": 0, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "ppm", "custom": {"lineWidth": 2}, "thresholds": {"mode": "absolute", "steps": [{"color": "green", "value": null}, {"color": "orange", "value": 800}, {"color": "red", "value": 1000}]}}},
+      "options": {"legend": {"displayMode": "list"}},
+      "targets": [{
+        "refId": "A", "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "pipeline"},
+        "type": "json", "source": "url", "format": "timeseries", "parser": "backend",
+        "url": "http://pipeline:8000/query?sql=SELECT CAST(recv_ts AS TIMESTAMPTZ) AS time, value FROM sensor WHERE room='$room' AND type='co2' ORDER BY recv_ts DESC LIMIT 2000",
+        "url_options": {"method": "GET"},
+        "columns": [{"selector": "time", "text": "time", "type": "timestamp"}, {"selector": "value", "text": "co2", "type": "number"}]
+      }]
+    },
+    {
+      "id": 2, "type": "timeseries", "title": "Temperature observed — $room (°C)",
+      "gridPos": {"x": 12, "y": 0, "w": 12, "h": 8},
+      "fieldConfig": {"defaults": {"unit": "celsius"}},
+      "targets": [{
+        "refId": "A", "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "pipeline"},
+        "type": "json", "source": "url", "format": "timeseries", "parser": "backend",
+        "url": "http://pipeline:8000/query?sql=SELECT CAST(recv_ts AS TIMESTAMPTZ) AS time, value FROM sensor WHERE room='$room' AND type='temperature' ORDER BY recv_ts DESC LIMIT 2000",
+        "url_options": {"method": "GET"},
+        "columns": [{"selector": "time", "text": "time", "type": "timestamp"}, {"selector": "value", "text": "temp", "type": "number"}]
+      }]
+    },
+    {
+      "id": 3, "type": "timeseries", "title": "Ventilation level & occupancy — $room",
+      "gridPos": {"x": 0, "y": 8, "w": 12, "h": 8},
+      "targets": [{
+        "refId": "A", "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "pipeline"},
+        "type": "json", "source": "url", "format": "timeseries", "parser": "backend",
+        "url": "http://pipeline:8000/query?sql=SELECT CAST(recv_ts AS TIMESTAMPTZ) AS time, state AS vent FROM actuator WHERE room='$room' AND kind='vent' AND state IS NOT NULL ORDER BY recv_ts DESC LIMIT 2000",
+        "url_options": {"method": "GET"},
+        "columns": [{"selector": "time", "text": "time", "type": "timestamp"}, {"selector": "vent", "text": "vent level", "type": "number"}]
+      }, {
+        "refId": "B", "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "pipeline"},
+        "type": "json", "source": "url", "format": "timeseries", "parser": "backend",
+        "url": "http://pipeline:8000/query?sql=SELECT CAST(recv_ts AS TIMESTAMPTZ) AS time, value FROM sensor WHERE room='$room' AND type='occupancy' ORDER BY recv_ts DESC LIMIT 2000",
+        "url_options": {"method": "GET"},
+        "columns": [{"selector": "time", "text": "time", "type": "timestamp"}, {"selector": "value", "text": "occupancy", "type": "number"}]
+      }]
+    },
+    {
+      "id": 4, "type": "table", "title": "Latest decisions (with reason)",
+      "gridPos": {"x": 12, "y": 8, "w": 12, "h": 8},
+      "targets": [{
+        "refId": "A", "datasource": {"type": "yesoreyeram-infinity-datasource", "uid": "pipeline"},
+        "type": "json", "source": "url", "format": "table", "parser": "backend",
+        "url": "http://pipeline:8000/query?sql=SELECT room, state, vent, setpoint_c, reason, sim_ts FROM decision QUALIFY row_number() OVER (PARTITION BY room ORDER BY recv_ts DESC) = 1 ORDER BY room",
+        "url_options": {"method": "GET"}
+      }]
+    }
+  ]
+}

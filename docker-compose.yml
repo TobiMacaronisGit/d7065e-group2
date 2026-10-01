@@ -1,0 +1,154 @@
+# D7065E Group 2 — CO₂-driven ventilation with thermal trade-off.
+# This file IS the C4 container diagram (docs/diagrams/container.d2): one service = one container = one folder.
+#
+#   docker compose up --build            everything, incl. BuildSim + occupancysim built from the course repo
+#   COURSE_REPO=../../D7065E             where the course repo is checked out (see .env.example)
+#
+# Device containers (sensor-*, actuator-*) live in compose.devices.yml, generated from config/rooms.json.
+name: d7065e-group2
+
+include:
+  - compose.devices.yml
+
+services:
+  # ───────────────────────── course infrastructure (not ours) ─────────────────────────
+  buildsim:
+    build: ${COURSE_REPO:-../../D7065E}/buildingsim
+    command: ["start", "--host", "0.0.0.0", "--port", "9090"]
+    ports: ["127.0.0.1:9090:9090"]
+    healthcheck:
+      test: ["CMD", "/buildsim", "health", "--url", "http://127.0.0.1:9090/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  occupancysim:
+    build: ${COURSE_REPO:-../../D7065E}/occupancysim
+    environment:
+      BUILDSIM_URL: http://buildsim:9090
+      BUILDSIM_PUBLIC_URL: http://127.0.0.1:9090
+      OCCUPANCY_LEVELS: ${OCCUPANCY_LEVELS:-level0}
+      OCCUPANCY_FACTOR: ${OCCUPANCY_FACTOR:-60}
+      OCCUPANCY_START: ${OCCUPANCY_START:-07:30}
+    ports: ["127.0.0.1:8081:8081"]
+    depends_on:
+      buildsim: {condition: service_healthy}
+    restart: unless-stopped
+
+  # ───────────────────────── infrastructure we chose ─────────────────────────
+  broker:
+    image: eclipse-mosquitto:2
+    volumes:
+      - ./broker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mosquitto-data:/mosquitto/data
+    ports: ["127.0.0.1:1883:1883"]
+    healthcheck:
+      test: ["CMD", "mosquitto_sub", "-h", "localhost", "-t", "$$SYS/broker/uptime", "-C", "1", "-W", "3"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    environment:
+      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports: ["127.0.0.1:3000:3000"]
+    depends_on: [pipeline]
+    restart: unless-stopped
+
+  # one-shot: register devices in BuildSim, point occupancysim's lectures at our rooms
+  seed:
+    build: {context: ., dockerfile: scripts/Dockerfile}
+    environment:
+      BUILDSIM_URL: http://buildsim:9090
+      OCCUPANCY_URL: http://occupancysim:8081
+    depends_on:
+      buildsim: {condition: service_healthy}
+      occupancysim: {condition: service_started}
+    restart: "no"
+
+  # ───────────────────────── truth layer ─────────────────────────
+  physics:
+    build: {context: ., dockerfile: physics/Dockerfile}
+    environment:
+      BUILDSIM_URL: http://buildsim:9090
+      OCCUPANCY_URL: http://occupancysim:8081
+    ports: ["127.0.0.1:8090:8000"]
+    depends_on:
+      buildsim: {condition: service_healthy}
+      seed: {condition: service_completed_successfully}
+    restart: unless-stopped
+
+  # ───────────────────────── device layer (besides the generated sensor-*/actuator-*) ─────────────────────────
+  occupancy_counter:
+    build: {context: ., dockerfile: occupancy_counter/Dockerfile}
+    environment:
+      BUILDSIM_URL: http://buildsim:9090
+      OCCUPANCY_URL: http://occupancysim:8081
+      MQTT_HOST: broker
+    depends_on:
+      broker: {condition: service_healthy}
+      buildsim: {condition: service_healthy}
+    restart: unless-stopped
+
+  # ───────────────────────── autonomous services ─────────────────────────
+  control:
+    build: {context: ., dockerfile: control/Dockerfile}
+    environment:
+      MQTT_HOST: broker
+      OCCUPANCY_URL: http://occupancysim:8081
+      EVAL_S: "5"
+    ports: ["127.0.0.1:8091:8000"]
+    depends_on:
+      broker: {condition: service_healthy}
+    restart: unless-stopped
+
+  planner:
+    build: {context: ., dockerfile: planner/Dockerfile}
+    environment:
+      MQTT_HOST: broker
+      OCCUPANCY_URL: http://occupancysim:8081
+      PIPELINE_URL: http://pipeline:8000
+      PLAN_S: "10"
+    ports: ["127.0.0.1:8093:8000"]
+    depends_on:
+      broker: {condition: service_healthy}
+      pipeline: {condition: service_started}
+    restart: unless-stopped
+
+  # ───────────────────────── data + presentation ─────────────────────────
+  pipeline:
+    build: {context: ., dockerfile: pipeline/Dockerfile}
+    environment:
+      MQTT_HOST: broker
+      DATA_DIR: /data
+      COMPACT_S: "300"
+    volumes:
+      - ./data:/data
+    ports: ["127.0.0.1:8092:8000"]
+    depends_on:
+      broker: {condition: service_healthy}
+    restart: unless-stopped
+
+  viewer:
+    build: {context: ., dockerfile: viewer/Dockerfile}
+    environment:
+      MQTT_HOST: broker
+      BUILDSIM_URL: http://buildsim:9090
+    ports: ["127.0.0.1:8094:8000"]
+    depends_on:
+      broker: {condition: service_healthy}
+      buildsim: {condition: service_healthy}
+    restart: unless-stopped
+
+volumes:
+  mosquitto-data:

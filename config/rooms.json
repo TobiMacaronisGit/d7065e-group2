@@ -1,0 +1,44 @@
+{
+  "_comment": "Single source of truth for the rooms and devices. scripts/gen_compose.py, scripts/seed_buildsim.py and every service read this file. Areas are m² (BuildSim area × 0.25), height 3 m.",
+  "level": "level0",
+  "room_height_m": 3.0,
+  "rooms": [
+    {"name": "A109",  "role": "lecture", "area_m2": 188},
+    {"name": "A117",  "role": "lecture", "area_m2": 214},
+    {"name": "A110",  "role": "fika",    "area_m2": 124},
+    {"name": "A323",  "role": "office",  "area_m2": 17},
+    {"name": "A113C", "role": "office",  "area_m2": 16}
+  ],
+  "sensors": [
+    {"type": "co2",         "unit": "ppm", "sample_s": 2, "noise_sigma": 15.0, "lag_s": 30},
+    {"type": "temperature", "unit": "°C",  "sample_s": 2, "noise_sigma": 0.1,  "lag_s": 30}
+  ],
+  "actuators": [
+    {"kind": "vent", "buildsim_type": "fan_speed", "min": 0, "max": 3,  "rate_per_s": 0.5, "initial": "0"},
+    {"kind": "heat", "buildsim_type": "setpoint",  "min": 10, "max": 26, "rate_per_s": 0.4, "initial": "17"}
+  ],
+  "physics": {
+    "co2_outdoor_ppm": 420,
+    "co2_gen_m3_per_s_per_person": 0.0000052,
+    "infiltration_ach": 0.2,
+    "ach_per_vent_level": 1.3,
+    "envelope_w_per_k_per_m2_floor": 2.5,
+    "thermal_mass_j_per_k_per_m3": 60000,
+    "body_heat_w": 100,
+    "heater_max_w_per_m2_floor": 80,
+    "heater_gain_w_per_k_per_m2_floor": 40,
+    "outdoor": {"annual_mean_c": 2.0, "annual_amplitude_c": 13.0, "daily_amplitude_c": 4.0, "coldest_day_of_year": 20}
+  },
+  "control": {
+    "co2_safety_ppm": 1200,
+    "co2_high_ppm": 1000,
+    "co2_raise_ppm": 800,
+    "co2_hysteresis_ppm": 100,
+    "min_change_interval_sim_s": 300,
+    "stale_after_sim_s": 300,
+    "frozen_after_samples": 8,
+    "setpoint_occupied_c": 21.0,
+    "setpoint_empty_c": 17.0,
+    "vent_min_level": 0
+  }
+}

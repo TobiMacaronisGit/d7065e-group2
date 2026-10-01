@@ -1,0 +1,53 @@
+# C4 Level 1 — System Context.  Render: d2 --theme 0 context.d2 context.svg
+# Everything internal is hidden on purpose: this diagram exists to fix the system boundary.
+direction: down
+
+manager: Building manager {
+  shape: person
+}
+occupant: Occupants {
+  shape: person
+}
+
+sys: |md
+  # Ventilation & climate control
+  **[our system]**
+
+  Senses CO₂, temperature and occupancy per room,
+  decides ventilation and heating setpoints,
+  and drives the actuators.
+| {
+  style.fill: "#dbeafe"
+  style.stroke: "#2563eb"
+  style.bold: true
+}
+
+buildsim: |md
+  # BuildSim
+  **[external, course-provided]**
+
+  Shared building state: rooms, equipment,
+  sensor values, actuator states, 3D viewer.
+  Passive — no physics, no history, no decisions.
+| {
+  style.stroke-dash: 4
+  style.fill: "#f3f4f6"
+}
+
+occupancysim: |md
+  # occupancysim
+  **[external, course-provided]**
+
+  Generates the people and the simulated clock.
+  Writes occupancy and entities to BuildSim.
+| {
+  style.stroke-dash: 4
+  style.fill: "#f3f4f6"
+}
+
+manager -> sys: monitors decisions, room state and health [HTTP / Grafana]
+manager -> buildsim: watches the 3D building [WebSocket, browser]
+occupant -> occupancysim: are simulated as people\n(they never talk to the system)
+occupancysim -> buildsim: PUT occupancy, entities [REST]
+sys -> buildsim: reads occupancy + actuator state,\nwrites sensor values, actuator states,\nroom layers and alerts [REST]
+sys -> occupancysim: reads the simulated clock [REST]

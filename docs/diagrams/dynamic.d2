@@ -1,0 +1,32 @@
+# C4 Dynamic diagram — "the 10:15 lecture fills A109".  Render: d2 --theme 0 dynamic.d2 dynamic.svg
+# Numbered runtime interactions between the containers of container.d2.
+# The point of this diagram: show that step 9 feeds step 1 — the loop is closed, not a pipeline.
+direction: right
+
+occupancysim: occupancysim {style.stroke-dash: 4}
+buildsim: BuildSim {style.stroke-dash: 4}
+occ: occupancy_counter
+physics: physics
+sensor: sensor-co2-A109
+broker: broker {shape: queue}
+pipeline: pipeline {shape: cylinder}
+planner: planner
+control: control
+actuator: actuator-vent-A109
+
+occupancysim -> buildsim: 1. PUT /api/occupancy\n(students enter A109)
+buildsim -> occ: 2. GET /api/occupancy → 55 persons
+occ -> broker: 3. sensor/occupancy = 55
+broker -> pipeline: 4. store (bronze JSONL)
+pipeline -> planner: 5. GET /history occupancy 120 min
+planner -> broker: 6. plan: forecast peak 1180 ppm\n→ suggested_vent 2 (retained)
+physics -> sensor: 7. truth CO₂ 780 ppm (rising)
+sensor -> broker: 8. sensor/co2 = 793 (+noise, +30 s lag)
+broker -> control: 9. reading + plan
+control -> broker: 10. command vent → 2\nreason "CO2 793 rising; planner expects 1180 in 30 min"
+broker -> actuator: 11. command (QoS 1, retained)
+actuator -> actuator: 12. validate issuer, range, freshness
+actuator -> buildsim: 13. travel 0.5 level/s → PUT state 2
+buildsim -> physics: 14. GET actuator state → vent 2
+physics -> physics: 15. CO₂ mass balance: Q↑ → CO₂ falls,\nheat loss ↑ → heater compensates
+physics -> sensor: 16. next truth 762 ppm → back to step 7 {style.stroke: "#dc2626"; style.bold: true}

@@ -1,0 +1,97 @@
+# C4 Level 2 — Containers.  Render: d2 --theme 0 container.d2 container.svg
+# This diagram maps 1:1 to docker-compose.yml and to the repository folders.
+direction: down
+
+buildsim: |md
+  # BuildSim
+  [Go, external] shared state + 3D viewer
+| {style.stroke-dash: 4; style.fill: "#f3f4f6"}
+
+occupancysim: |md
+  # occupancysim
+  [Go, external] people + simulated clock (60×)
+| {style.stroke-dash: 4; style.fill: "#f3f4f6"}
+
+sys: Ventilation & climate control [our system] {
+  style.stroke-dash: 4
+  style.fill: transparent
+
+  truth: TRUTH LAYER — never observable by the control system {
+    style.fill: "#fef3c7"
+    physics: |md
+      # physics
+      [Python] ground truth CO₂ + temperature
+      per room, stepped on the simulated clock
+    |
+  }
+
+  device: DEVICE LAYER — one container per physical device {
+    style.fill: "#dcfce7"
+    sensor: |md
+      # sensor-{co2,temp}-{room} ×10
+      [Python] sample truth, add lag + noise + faults
+    |
+    occ: |md
+      # occupancy_counter
+      [Python] head count per room
+    |
+    actuator: |md
+      # actuator-{vent,heat}-{room} ×10
+      [Python] validate, rate-limit, apply, report
+    |
+  }
+
+  broker: |md
+    # broker
+    [Mosquitto] pub/sub, QoS 1, retained
+  | {shape: queue; style.fill: "#e0e7ff"}
+
+  pipeline: |md
+    # pipeline
+    [Python + DuckDB] JSONL → Parquet, history + query API
+  | {shape: cylinder; style.fill: "#e0e7ff"}
+
+  control: |md
+    # control
+    [Python] reactive rules, safety clamp,
+    degraded handling — the fast loop
+  | {style.fill: "#dbeafe"}
+
+  planner: |md
+    # planner
+    [Python + numpy] occupancy forecast →
+    CO₂ rollout → suggested setpoints — the slow loop
+  | {style.fill: "#dbeafe"}
+
+  viewer: |md
+    # viewer
+    [Python] single writer of room layers + alerts
+  |
+
+  grafana: |md
+    # grafana
+    [Grafana] time series from the pipeline
+  |
+}
+
+# --- the closed loop ---
+sys.truth.physics -> sys.device.sensor: ground truth [REST, poll 2 s]
+sys.device.sensor -> broker: reading [MQTT bldg/…/sensor/+]
+sys.device.occ -> broker: head count [MQTT]
+broker -> sys.control: readings, plans
+broker -> sys.pipeline: everything [MQTT bldg/#, sys/health/#]
+sys.control -> broker: command [MQTT …/cmd, retained]
+broker -> sys.device.actuator: command
+sys.device.actuator -> buildsim: PUT /api/actuators/{id}/state
+buildsim -> sys.truth.physics: GET actuator state + occupancy\n**this read-back closes the loop** [REST]
+
+# --- observation and presentation ---
+sys.device.sensor -> buildsim: PUT /api/sensors/{id}/value
+sys.control -> broker: decision + reason [MQTT]
+sys.pipeline -> sys.planner: history [REST /history]
+sys.planner -> broker: plan [MQTT …/plan, retained]
+sys.pipeline -> sys.grafana: query [REST /query]
+broker -> sys.viewer: readings, decisions, health
+sys.viewer -> buildsim: PUT /api/room-layers, /api/alerts
+occupancysim -> buildsim: PUT occupancy, entities [REST]
+occupancysim -> sys.truth.physics: simulated clock [REST /api/state]

@@ -1,0 +1,9 @@
+apiVersion: 1
+datasources:
+  - name: pipeline
+    uid: pipeline
+    type: yesoreyeram-infinity-datasource
+    access: proxy
+    isDefault: true
+    jsonData:
+      allowedHosts: ["http://pipeline:8000"]

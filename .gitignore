@@ -30,3 +30,20 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# --- D7065E project ---
+# recorded experiment data (bronze JSONL / silver Parquet) — regenerate by running the stack
+data/bronze/
+data/silver/
+data/gold/
+# trained forecast model — regenerate with `make train`
+planner/model.json
+# local Compose overrides
+.env
+docker-compose.override.yml
+# macOS
+.DS_Store
+# python
+__pycache__/
+*.py[cod]
+.pytest_cache/

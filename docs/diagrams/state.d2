@@ -1,0 +1,51 @@
+# State machine — the per-room controller in control/rules.py.
+# Render: d2 --theme 0 state.d2 state.svg
+# Every transition here is a branch in RoomController.decide(); every branch is covered by a test.
+direction: down
+
+start: "" {shape: circle; style.fill: "#111827"; width: 20; height: 20}
+
+NO_DATA: |md
+  # NO_DATA
+  no trustworthy CO₂ **and** no occupancy
+
+  vent = safe default (2), setpoint = 21 °C
+| {style.fill: "#fee2e2"}
+
+NORMAL: |md
+  # NORMAL
+  CO₂ fresh and plausible
+
+  vent from thresholds + hysteresis,
+  planner may raise
+| {style.fill: "#dcfce7"}
+
+DEGRADED: |md
+  # DEGRADED
+  CO₂ stale > 300 sim-s **or** frozen (≥ 8 identical samples)
+
+  decide from occupancy instead; room flagged in the 3D viewer
+| {style.fill: "#fef3c7"}
+
+SAFETY: |md
+  # SAFETY
+  CO₂ ≥ 1200 ppm
+
+  vent = max, no hysteresis, overrides everything
+| {style.fill: "#fecaca"; style.bold: true}
+
+start -> NO_DATA
+NO_DATA -> NORMAL: first fresh CO₂ reading
+NO_DATA -> DEGRADED: occupancy available,\nCO₂ still not trustworthy
+NORMAL -> DEGRADED: CO₂ stale or frozen
+DEGRADED -> NORMAL: CO₂ fresh and varying again
+DEGRADED -> NO_DATA: occupancy also lost
+NORMAL -> SAFETY: CO₂ ≥ 1200 ppm
+DEGRADED -> SAFETY: CO₂ ≥ 1200 ppm\n(a frozen sensor cannot reach this —\nwhich is exactly why DEGRADED ventilates)
+SAFETY -> NORMAL: CO₂ < 1200 ppm
+
+note: |md
+  **Invariant on every transition:** after all rules and any plan,
+  `vent = max(vent_min_level, min(vent_max, vent))` — REG-01 is a
+  clamp applied last, so no rule and no forecast can violate it.
+| {style.fill: "#f3f4f6"; style.stroke-dash: 3}
