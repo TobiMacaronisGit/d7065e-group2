@@ -2,6 +2,7 @@
 # One container per physical device (design decision D-05, docs/decision-log.md).
 services:
   sensor-co2-a109:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A109-co2"
@@ -21,6 +22,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A109, d7065e.type: co2}
   sensor-temp-a109:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A109-temp"
@@ -40,6 +42,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A109, d7065e.type: temperature}
   actuator-vent-a109:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A109-vent"
@@ -58,6 +61,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A109, d7065e.type: vent}
   actuator-heat-a109:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A109-heat"
@@ -76,6 +80,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A109, d7065e.type: heat}
   sensor-co2-a117:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A117-co2"
@@ -95,6 +100,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A117, d7065e.type: co2}
   sensor-temp-a117:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A117-temp"
@@ -114,6 +120,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A117, d7065e.type: temperature}
   actuator-vent-a117:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A117-vent"
@@ -132,6 +139,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A117, d7065e.type: vent}
   actuator-heat-a117:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A117-heat"
@@ -150,6 +158,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A117, d7065e.type: heat}
   sensor-co2-a110:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A110-co2"
@@ -169,6 +178,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A110, d7065e.type: co2}
   sensor-temp-a110:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A110-temp"
@@ -188,6 +198,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A110, d7065e.type: temperature}
   actuator-vent-a110:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A110-vent"
@@ -206,6 +217,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A110, d7065e.type: vent}
   actuator-heat-a110:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A110-heat"
@@ -224,6 +236,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A110, d7065e.type: heat}
   sensor-co2-a323:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A323-co2"
@@ -243,6 +256,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A323, d7065e.type: co2}
   sensor-temp-a323:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A323-temp"
@@ -262,6 +276,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A323, d7065e.type: temperature}
   actuator-vent-a323:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A323-vent"
@@ -280,6 +295,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A323, d7065e.type: vent}
   actuator-heat-a323:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A323-heat"
@@ -298,6 +314,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A323, d7065e.type: heat}
   sensor-co2-a113c:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A113C-co2"
@@ -317,6 +334,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A113C, d7065e.type: co2}
   sensor-temp-a113c:
+    image: d7065e/sensor
     build: {context: ., dockerfile: sensor/Dockerfile}
     environment:
       SENSOR_ID: "A113C-temp"
@@ -336,6 +354,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A113C, d7065e.type: temperature}
   actuator-vent-a113c:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A113C-vent"
@@ -354,6 +373,7 @@ services:
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A113C, d7065e.type: vent}
   actuator-heat-a113c:
+    image: d7065e/actuator
     build: {context: ., dockerfile: actuator/Dockerfile}
     environment:
       ACTUATOR_ID: "A113C-heat"
@@ -371,4 +391,3 @@ services:
       broker: {condition: service_healthy}
     restart: unless-stopped
     labels: {d7065e.layer: device, d7065e.room: A113C, d7065e.type: heat}
-
