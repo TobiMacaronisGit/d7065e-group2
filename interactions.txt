@@ -1,0 +1,84 @@
+﻿claude\actuator\main.py:3: The autonomous service never writes to BuildSim. It publishes a command; this process
+claude\actuator\main.py:83: except httpx.HTTPStatusError as e:
+claude\actuator\main.py:87: except httpx.HTTPError as e:
+claude\actuator\main.py:92: self.bus.publish(topics.actuator_state(self.level, self.room, self.kind), st.to_dict(), retain=True)
+claude\actuator\main.py:97: self.bus.subscribe(topics.actuator_cmd(self.level, self.room, self.kind), self.on_command)
+claude\actuator\main.py:98: self.bus.subscribe(topics.fault(self.id), self.on_fault)
+claude\common\buildsim.py:23: self._c = httpx.Client(base_url=self.base, timeout=timeout)
+claude\common\buildsim.py:29: except httpx.HTTPError:
+claude\common\buildsim.py:95: except httpx.HTTPError as e:
+claude\common\clock.py:38: self._c = httpx.Client(timeout=3.0)
+claude\common\http.py:4: @app.get("/extra") ...
+claude\common\http.py:21: @app.get("/healthz")
+claude\common\mqtt.py:5: bus.subscribe("bldg/+/+/sensor/+", on_reading)   # callback(topic, payload_dict)
+claude\common\mqtt.py:7: bus.publish(topic, {...}, retain=True)
+claude\common\mqtt.py:40: # Last will: if this process dies, the broker publishes "down" on our health topic.
+claude\common\mqtt.py:66: def subscribe(self, topic: str, cb: Callback) -> None:
+claude\common\mqtt.py:69: self._client.subscribe(topic, qos=1)
+claude\common\mqtt.py:71: def publish(self, topic: str, payload: dict[str, Any], retain: bool = False) -> None:
+claude\common\mqtt.py:72: info = self._client.publish(topic, json.dumps(payload, ensure_ascii=False), qos=1, retain=retain)
+claude\common\mqtt.py:74: log.warning("publish to %s failed rc=%s (queued for reconnect)", topic, info.rc)
+claude\common\mqtt.py:78: self.publish(f"sys/health/{self.client_id}", Health(self.client_id, status, detail).to_dict(), retain=True)
+claude\common\mqtt.py:84: client.subscribe(topic, qos=1)
+claude\control\main.py:3: Subscribes to every sensor stream and plan, evaluates each room every EVAL_S wall seconds with
+claude\control\main.py:4: `control.rules.RoomController`, publishes a Decision (always, for the audit trail / dashboard) and
+claude\control\main.py:64: self.bus.publish(topics.decision(self.level, r.name), d.to_dict())
+claude\control\main.py:73: self.bus.publish(topics.actuator_cmd(self.level, room, kind), cmd.to_dict(), retain=True)
+claude\control\main.py:78: self.bus.subscribe(f"bldg/{self.level}/+/sensor/+", self.on_reading)
+claude\control\main.py:79: self.bus.subscribe(f"bldg/{self.level}/+/plan", self.on_plan)
+claude\control\main.py:100: @app.get("/decisions")
+claude\occupancy_counter\main.py:1: """occupancy_counter — reads "who is in which room" from BuildSim and publishes a head count
+claude\occupancy_counter\main.py:59: self.bus.publish(topics.sensor(self.level, r.name, "occupancy"), reading.to_dict())
+claude\occupancy_counter\main.py:62: except httpx.HTTPStatusError as e:
+claude\occupancy_counter\main.py:65: except httpx.HTTPError:
+claude\occupancy_counter\main.py:69: except (httpx.HTTPError, ValueError) as e:
+claude\physics\main.py:63: except (httpx.HTTPError, ValueError, KeyError) as e:
+claude\physics\main.py:113: @app.get("/rooms")
+claude\physics\main.py:117: @app.get("/rooms/{room}")
+claude\pipeline\main.py:51: self.bus.subscribe("bldg/#", self.on_message)
+claude\pipeline\main.py:52: self.bus.subscribe("sys/health/#", self.on_message)
+claude\pipeline\main.py:74: @app.get("/history")
+claude\pipeline\main.py:78: @app.get("/query")
+claude\pipeline\main.py:87: @app.get("/stats")
+claude\pipeline\main.py:91: @app.post("/compact")
+claude\planner\main.py:7: 4. publish a Plan (retained) — control may raise ventilation/setpoint from it, never lower
+claude\planner\main.py:11: publishes nothing new; control keeps running on the reactive rules (graceful degradation).
+claude\planner\main.py:49: self._c = httpx.Client(timeout=5.0)
+claude\planner\main.py:107: self.bus.publish(topics.plan(self.level, r.name), plan.to_dict(), retain=True)
+claude\planner\main.py:108: except (httpx.HTTPError, ValueError, KeyError) as e:
+claude\planner\main.py:122: @app.get("/plans")
+claude\scripts\seed.py:36: if httpx.get(url, timeout=3).status_code == 200:
+claude\scripts\seed.py:38: except httpx.HTTPError:
+claude\scripts\seed.py:61: floor = httpx.get(f"{BUILDSIM}/api/building/floors/{level}", timeout=10).json()
+claude\scripts\seed.py:74: params = httpx.get(f"{OCCUPANCY}/api/config", timeout=10).json()
+claude\scripts\seed.py:76: r = httpx.put(f"{OCCUPANCY}/api/config", json=params, timeout=30)
+claude\sensor\main.py:8: Fault injection (for the evaluation, D-dimension): publish {"mode": "stuck"|"offline"|"drift"|"none"}
+claude\sensor\main.py:55: self.last_published: str | None = None
+claude\sensor\main.py:57: self._c = httpx.Client(timeout=3.0)
+claude\sensor\main.py:87: if self.fault == "stuck" and self.last_published is not None:
+claude\sensor\main.py:88: value = float(self.last_published)      # frozen on a plausible value
+claude\sensor\main.py:92: self.last_published = FMT[self.type].format(value)
+claude\sensor\main.py:93: reading = SensorReading(self.id, self.level, self.room, self.type, self.unit, float(self.last_published), sim_ts, self.seq)
+claude\sensor\main.py:94: self.bus.publish(topics.sensor(self.level, self.room, self.type), reading.to_dict())
+claude\sensor\main.py:96: self.bs.set_sensor(self.id, self.last_published)
+claude\sensor\main.py:98: except httpx.HTTPStatusError as e:
+claude\sensor\main.py:102: except httpx.HTTPError as e:
+claude\sensor\main.py:108: self.bs.ensure(sensor_record(self.room, self.level, self.type, self.id, self.unit, self.last_published or "0"))
+claude\sensor\main.py:111: self.bus.subscribe(topics.fault(self.id), self.on_fault)
+claude\sensor\main.py:120: except (httpx.HTTPError, KeyError, ValueError) as e:
+claude\sensor\main.py:132: "seq": s.seq, "last": s.last_published, "buildsim_failures": s.buildsim_failures}))
+claude\tests\e2e\test_loop.py:5: The test plays the role of `control` for one command: it publishes a retained ventilation command for
+claude\tests\e2e\test_loop.py:39: def publish(topic: str, payload: dict, retain: bool = True) -> None:
+claude\tests\e2e\test_loop.py:43: c.publish(topic, json.dumps(payload), qos=1, retain=retain).wait_for_publish(5)
+claude\tests\e2e\test_loop.py:49: rows = httpx.get(f"{PIPELINE}/history", params={"room": ROOM, "type": "co2", "minutes": 5}).json()
+claude\tests\e2e\test_loop.py:55: assert httpx.get(f"{BUILDSIM}/healthz").status_code == 200
+claude\tests\e2e\test_loop.py:56: wait_for(lambda: httpx.get(f"{PIPELINE}/history", params={"room": ROOM, "type": "co2", "minutes": 5}).json(),
+claude\tests\e2e\test_loop.py:62: publish(f"bldg/{LEVEL}/{ROOM}/actuator/vent/cmd", cmd)
+claude\tests\e2e\test_loop.py:65: wait_for(lambda: float(httpx.get(f"{BUILDSIM}/api/actuators/{ROOM}-vent").json()["state"]) >= 3, timeout=30, what="BuildSim actuator = 3")
+claude\tests\e2e\test_loop.py:67: wait_for(lambda: float(httpx.get(f"{PHYSICS}/rooms/{ROOM}").json()["vent_level"]) >= 3, timeout=15, what="physics sees vent 3")
+claude\tests\e2e\test_loop.py:73: # hand the room back to control: an out-of-range retained command is rejected, so publish a sane one
+claude\tests\e2e\test_loop.py:75: publish(f"bldg/{LEVEL}/{ROOM}/actuator/vent/cmd", cmd)
+claude\viewer\main.py:86: self.bus.subscribe(f"bldg/{self.level}/+/sensor/+", self.on_reading)
+claude\viewer\main.py:87: self.bus.subscribe(f"bldg/{self.level}/+/decision", self.on_decision)
+claude\viewer\main.py:88: self.bus.subscribe("sys/health/+", self.on_health)
+claude\viewer\main.py:96: except httpx.HTTPError as e:
