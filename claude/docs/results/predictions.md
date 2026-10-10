@@ -47,3 +47,17 @@ exceedances can only happen at the start of a lecture, while ventilation is stil
 
 **Prediction B contradicts Prediction A on R2 vs R3.** The run decides which one holds.
 Expected for all three: **FR-02 fails** — the planner cannot compensate for heater capacity.
+
+## Prediction C — new physics (R6 / R7 / R8), written 10 Oct ≈ 17:35
+
+Written while R8 was running, **after** R6 and R7 had finished but **before** any of R6–R8 was evaluated
+(only their end-of-day energy values had been seen). Source: offline run of the updated `physics/model.py`
+over the same day with a timetable-like schedule (pre-heat ≈ 60 min, pre-ventilation 30 min before a lecture).
+
+Config: AHU supply air 18 °C, heat recovery 75 %, radiator 130 W/m² (band 1 K), ventilation 3.6 ACH/level.
+
+| Metric (A109 + A117) | R6 off | R7 persistence | R8 timetable | Reasoning |
+|---|---|---|---|---|
+| CO₂ > 1000 ppm (sim-min) | ≈ R1 (149) | ≈ R4 (20) | ≈ R5 (0) | supply temperature does not enter the CO₂ balance; ventilation and control unchanged |
+| Comfort 20–24 °C | clearly below R8 | clearly below R8 | **A109 ≈ 95 %, A117 ≈ 91 %** | only the timetable pre-heats before people arrive; without it each lecture starts from the setback |
+| Energy (heater + AHU) | lowest | higher (more ventilation) | highest | R6 259.5 and R7 280.7 kWh already seen |
