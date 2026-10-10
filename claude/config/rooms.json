@@ -21,7 +21,7 @@
     "co2_outdoor_ppm": 420,
     "co2_gen_m3_per_s_per_person": 0.0000052,
     "infiltration_ach": 0.2,
-    "ach_per_vent_level": 1.3,
+    "ach_per_vent_level": 3.6,
     "envelope_w_per_k_per_m2_floor": 2.5,
     "thermal_mass_j_per_k_per_m3": 60000,
     "body_heat_w": 100,

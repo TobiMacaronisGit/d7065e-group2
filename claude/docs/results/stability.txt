@@ -1,0 +1,187 @@
+Sat 10 Oct 2026 12:33:24 CEST
+NAME                                  STATUS
+d7065e-group2-actuator-heat-a109-1    Up 42 minutes (healthy)
+d7065e-group2-actuator-heat-a110-1    Up 42 minutes (healthy)
+d7065e-group2-actuator-heat-a113c-1   Up 42 minutes (healthy)
+d7065e-group2-actuator-heat-a117-1    Up 42 minutes (healthy)
+d7065e-group2-actuator-heat-a323-1    Up 42 minutes (healthy)
+d7065e-group2-actuator-vent-a109-1    Up 42 minutes (healthy)
+d7065e-group2-actuator-vent-a110-1    Up 42 minutes (healthy)
+d7065e-group2-actuator-vent-a113c-1   Up 42 minutes (healthy)
+d7065e-group2-actuator-vent-a117-1    Up 42 minutes (healthy)
+d7065e-group2-actuator-vent-a323-1    Up 42 minutes (healthy)
+d7065e-group2-broker-1                Up 43 minutes (healthy)
+d7065e-group2-buildsim-1              Up 43 minutes (healthy)
+d7065e-group2-control-1               Up 42 minutes (healthy)
+d7065e-group2-grafana-1               Up 19 minutes
+d7065e-group2-occupancy_counter-1     Up 42 minutes (healthy)
+d7065e-group2-occupancysim-1          Up 42 minutes
+d7065e-group2-physics-1               Up 42 minutes (healthy)
+d7065e-group2-pipeline-1              Up 14 minutes (healthy)
+d7065e-group2-planner-1               Up 42 minutes (healthy)
+d7065e-group2-sensor-co2-a109-1       Up 42 minutes (healthy)
+d7065e-group2-sensor-co2-a110-1       Up 42 minutes (healthy)
+d7065e-group2-sensor-co2-a113c-1      Up 42 minutes (healthy)
+d7065e-group2-sensor-co2-a117-1       Up 42 minutes (healthy)
+d7065e-group2-sensor-co2-a323-1       Up 42 minutes (healthy)
+d7065e-group2-sensor-temp-a109-1      Up 42 minutes (healthy)
+d7065e-group2-sensor-temp-a110-1      Up 42 minutes (healthy)
+d7065e-group2-sensor-temp-a113c-1     Up 42 minutes (healthy)
+d7065e-group2-sensor-temp-a117-1      Up 42 minutes (healthy)
+d7065e-group2-sensor-temp-a323-1      Up 42 minutes (healthy)
+d7065e-group2-viewer-1                Up 42 minutes (healthy)
+/d7065e-group2-actuator-heat-a109-1 restarts=0
+/d7065e-group2-actuator-heat-a110-1 restarts=0
+/d7065e-group2-actuator-heat-a113c-1 restarts=0
+/d7065e-group2-actuator-heat-a117-1 restarts=0
+/d7065e-group2-actuator-heat-a323-1 restarts=0
+/d7065e-group2-actuator-vent-a109-1 restarts=0
+/d7065e-group2-actuator-vent-a110-1 restarts=0
+/d7065e-group2-actuator-vent-a113c-1 restarts=0
+/d7065e-group2-actuator-vent-a117-1 restarts=0
+/d7065e-group2-actuator-vent-a323-1 restarts=0
+/d7065e-group2-broker-1 restarts=0
+/d7065e-group2-buildsim-1 restarts=0
+/d7065e-group2-control-1 restarts=0
+/d7065e-group2-grafana-1 restarts=0
+/d7065e-group2-occupancy_counter-1 restarts=0
+/d7065e-group2-occupancysim-1 restarts=0
+/d7065e-group2-physics-1 restarts=0
+/d7065e-group2-pipeline-1 restarts=0
+/d7065e-group2-planner-1 restarts=0
+/d7065e-group2-sensor-co2-a109-1 restarts=0
+/d7065e-group2-sensor-co2-a110-1 restarts=0
+/d7065e-group2-sensor-co2-a113c-1 restarts=0
+/d7065e-group2-sensor-co2-a117-1 restarts=0
+/d7065e-group2-sensor-co2-a323-1 restarts=0
+/d7065e-group2-sensor-temp-a109-1 restarts=0
+/d7065e-group2-sensor-temp-a110-1 restarts=0
+/d7065e-group2-sensor-temp-a113c-1 restarts=0
+/d7065e-group2-sensor-temp-a117-1 restarts=0
+/d7065e-group2-sensor-temp-a323-1 restarts=0
+/d7065e-group2-viewer-1 restarts=0
+CONTAINER ID   NAME                                  CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O        PIDS
+c970d35ec5a1   d7065e-group2-pipeline-1              0.75%     86.7MiB / 14.62GiB    0.58%     4.96MB / 12.1MB   0B / 852kB       10
+8d6f28848839   d7065e-group2-grafana-1               0.84%     161.2MiB / 14.62GiB   1.08%     45.7MB / 21.9MB   0B / 130MB       28
+c5a5b630b9c9   d7065e-group2-sensor-co2-a113c-1      6.99%     38.01MiB / 14.62GiB   0.25%     1.34MB / 1.85MB   0B / 856kB       4
+785f42906550   d7065e-group2-sensor-co2-a110-1       6.36%     38.05MiB / 14.62GiB   0.25%     1.34MB / 1.85MB   0B / 856kB       4
+984591db2547   d7065e-group2-sensor-temp-a117-1      6.34%     38.73MiB / 14.62GiB   0.26%     1.34MB / 1.87MB   0B / 856kB       4
+15d7a21b2a23   d7065e-group2-sensor-temp-a113c-1     6.04%     38.01MiB / 14.62GiB   0.25%     1.34MB / 1.88MB   0B / 856kB       4
+d757abe0a1a2   d7065e-group2-sensor-temp-a110-1      6.72%     38.39MiB / 14.62GiB   0.26%     1.34MB / 1.87MB   0B / 856kB       4
+755a1224c8e8   d7065e-group2-sensor-temp-a109-1      6.33%     38.2MiB / 14.62GiB    0.26%     1.34MB / 1.87MB   0B / 856kB       4
+1b08364d64e1   d7065e-group2-sensor-temp-a323-1      6.84%     38.39MiB / 14.62GiB   0.26%     1.33MB / 1.87MB   0B / 856kB       4
+760d65596f74   d7065e-group2-sensor-co2-a323-1       6.24%     38.39MiB / 14.62GiB   0.26%     1.33MB / 1.85MB   0B / 856kB       4
+b3572e2bfcb2   d7065e-group2-sensor-co2-a117-1       5.99%     38.01MiB / 14.62GiB   0.25%     1.34MB / 1.84MB   0B / 856kB       4
+3fb8abc8bfe5   d7065e-group2-sensor-co2-a109-1       6.74%     38.38MiB / 14.62GiB   0.26%     1.34MB / 1.84MB   0B / 856kB       4
+04f5ae9076ff   d7065e-group2-physics-1               1.49%     46.75MiB / 14.62GiB   0.31%     101MB / 10.5MB    0B / 852kB       6
+26528c382c4a   d7065e-group2-planner-1               6.46%     51.49MiB / 14.62GiB   0.34%     50.1MB / 2.28MB   0B / 905kB       9
+288ef32b9c3d   d7065e-group2-viewer-1                0.67%     37.59MiB / 14.62GiB   0.25%     12.9MB / 5.35MB   0B / 852kB       4
+47372ae6e4ed   d7065e-group2-occupancy_counter-1     1.17%     45.33MiB / 14.62GiB   0.30%     83.1MB / 6.06MB   0B / 860kB       4
+30a3b0b07988   d7065e-group2-occupancysim-1          1.91%     23.88MiB / 14.62GiB   0.16%     5.32MB / 667MB    6.47MB / 0B      12
+977f8bbfe52f   d7065e-group2-actuator-heat-a117-1    0.16%     37.65MiB / 14.62GiB   0.25%     251kB / 435kB     0B / 864kB       4
+80cc0ac38cd0   d7065e-group2-actuator-vent-a117-1    0.26%     37.64MiB / 14.62GiB   0.25%     234kB / 393kB     0B / 864kB       4
+afba70cf90fb   d7065e-group2-actuator-vent-a110-1    0.24%     37.33MiB / 14.62GiB   0.25%     264kB / 432kB     0B / 864kB       4
+b503639fe443   d7065e-group2-actuator-heat-a113c-1   0.17%     37.73MiB / 14.62GiB   0.25%     286kB / 500kB     57.3kB / 864kB   4
+e8b4ab0cadf6   d7065e-group2-actuator-vent-a109-1    0.24%     37.76MiB / 14.62GiB   0.25%     234kB / 395kB     0B / 864kB       4
+b6ad36698845   d7065e-group2-control-1               0.72%     46.88MiB / 14.62GiB   0.31%     84.5MB / 3.14MB   0B / 868kB       4
+24a871eb1d5c   d7065e-group2-actuator-vent-a113c-1   0.24%     37.63MiB / 14.62GiB   0.25%     231kB / 384kB     0B / 864kB       4
+1eda54d7b20f   d7065e-group2-actuator-heat-a110-1    0.20%     37.28MiB / 14.62GiB   0.25%     284kB / 497kB     0B / 864kB       4
+5e1779ea951b   d7065e-group2-actuator-heat-a109-1    0.68%     37.65MiB / 14.62GiB   0.25%     245kB / 426kB     0B / 864kB       4
+c174a75d4563   d7065e-group2-actuator-vent-a323-1    0.19%     37.24MiB / 14.62GiB   0.25%     205kB / 350kB     0B / 864kB       4
+bd4f91c19ff6   d7065e-group2-actuator-heat-a323-1    0.20%     37.27MiB / 14.62GiB   0.25%     211kB / 362kB     0B / 864kB       4
+beec5c86f816   d7065e-group2-buildsim-1              1.97%     58.46MiB / 14.62GiB   0.39%     70.2MB / 79.8MB   23.2MB / 0B      13
+a80f1fdbde64   d7065e-group2-broker-1                0.31%     13MiB / 14.62GiB      0.09%     22.3MB / 35.8MB   10.7MB / 1.7MB   1
+--- after 1h ---
+Sat 10 Oct 2026 13:25:01 CEST
+NAME                                  STATUS
+d7065e-group2-actuator-heat-a109-1    Up 2 hours (healthy)
+d7065e-group2-actuator-heat-a110-1    Up 2 hours (healthy)
+d7065e-group2-actuator-heat-a113c-1   Up 2 hours (healthy)
+d7065e-group2-actuator-heat-a117-1    Up 2 hours (healthy)
+d7065e-group2-actuator-heat-a323-1    Up 2 hours (healthy)
+d7065e-group2-actuator-vent-a109-1    Up 2 hours (healthy)
+d7065e-group2-actuator-vent-a110-1    Up 2 hours (healthy)
+d7065e-group2-actuator-vent-a113c-1   Up 2 hours (healthy)
+d7065e-group2-actuator-vent-a117-1    Up 2 hours (healthy)
+d7065e-group2-actuator-vent-a323-1    Up 2 hours (healthy)
+d7065e-group2-broker-1                Up 2 hours (healthy)
+d7065e-group2-buildsim-1              Up 2 hours (healthy)
+d7065e-group2-control-1               Up 2 hours (healthy)
+d7065e-group2-grafana-1               Up About an hour
+d7065e-group2-occupancy_counter-1     Up 2 hours (healthy)
+d7065e-group2-occupancysim-1          Up 2 hours
+d7065e-group2-physics-1               Up 2 hours (healthy)
+d7065e-group2-pipeline-1              Up About an hour (healthy)
+d7065e-group2-planner-1               Up 2 hours (healthy)
+d7065e-group2-sensor-co2-a109-1       Up 2 hours (healthy)
+d7065e-group2-sensor-co2-a110-1       Up 2 hours (healthy)
+d7065e-group2-sensor-co2-a113c-1      Up 2 hours (healthy)
+d7065e-group2-sensor-co2-a117-1       Up 2 hours (healthy)
+d7065e-group2-sensor-co2-a323-1       Up 2 hours (healthy)
+d7065e-group2-sensor-temp-a109-1      Up 2 hours (healthy)
+d7065e-group2-sensor-temp-a110-1      Up 2 hours (healthy)
+d7065e-group2-sensor-temp-a113c-1     Up 2 hours (healthy)
+d7065e-group2-sensor-temp-a117-1      Up 2 hours (healthy)
+d7065e-group2-sensor-temp-a323-1      Up 2 hours (healthy)
+d7065e-group2-viewer-1                Up 2 hours (healthy)
+/d7065e-group2-actuator-heat-a109-1 restarts=0
+/d7065e-group2-actuator-heat-a110-1 restarts=0
+/d7065e-group2-actuator-heat-a113c-1 restarts=0
+/d7065e-group2-actuator-heat-a117-1 restarts=0
+/d7065e-group2-actuator-heat-a323-1 restarts=0
+/d7065e-group2-actuator-vent-a109-1 restarts=0
+/d7065e-group2-actuator-vent-a110-1 restarts=0
+/d7065e-group2-actuator-vent-a113c-1 restarts=0
+/d7065e-group2-actuator-vent-a117-1 restarts=0
+/d7065e-group2-actuator-vent-a323-1 restarts=0
+/d7065e-group2-broker-1 restarts=0
+/d7065e-group2-buildsim-1 restarts=0
+/d7065e-group2-control-1 restarts=0
+/d7065e-group2-grafana-1 restarts=0
+/d7065e-group2-occupancy_counter-1 restarts=0
+/d7065e-group2-occupancysim-1 restarts=0
+/d7065e-group2-physics-1 restarts=0
+/d7065e-group2-pipeline-1 restarts=0
+/d7065e-group2-planner-1 restarts=0
+/d7065e-group2-sensor-co2-a109-1 restarts=0
+/d7065e-group2-sensor-co2-a110-1 restarts=0
+/d7065e-group2-sensor-co2-a113c-1 restarts=0
+/d7065e-group2-sensor-co2-a117-1 restarts=0
+/d7065e-group2-sensor-co2-a323-1 restarts=0
+/d7065e-group2-sensor-temp-a109-1 restarts=0
+/d7065e-group2-sensor-temp-a110-1 restarts=0
+/d7065e-group2-sensor-temp-a113c-1 restarts=0
+/d7065e-group2-sensor-temp-a117-1 restarts=0
+/d7065e-group2-sensor-temp-a323-1 restarts=0
+/d7065e-group2-viewer-1 restarts=0
+CONTAINER ID   NAME                                  CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+c970d35ec5a1   d7065e-group2-pipeline-1              1.35%     115.7MiB / 14.62GiB   0.77%     22MB / 28.7MB     0B / 852kB        9
+8d6f28848839   d7065e-group2-grafana-1               0.72%     161.6MiB / 14.62GiB   1.08%     45.7MB / 21.9MB   0B / 132MB        28
+c5a5b630b9c9   d7065e-group2-sensor-co2-a113c-1      0.53%     38.09MiB / 14.62GiB   0.25%     2.94MB / 4.09MB   0B / 856kB        4
+785f42906550   d7065e-group2-sensor-co2-a110-1       0.64%     38.13MiB / 14.62GiB   0.25%     2.95MB / 4.07MB   0B / 856kB        4
+984591db2547   d7065e-group2-sensor-temp-a117-1      0.78%     38.8MiB / 14.62GiB    0.26%     2.95MB / 4.13MB   0B / 856kB        4
+15d7a21b2a23   d7065e-group2-sensor-temp-a113c-1     0.73%     38.07MiB / 14.62GiB   0.25%     2.94MB / 4.15MB   0B / 856kB        4
+d757abe0a1a2   d7065e-group2-sensor-temp-a110-1      1.18%     38.46MiB / 14.62GiB   0.26%     2.95MB / 4.13MB   0B / 856kB        4
+755a1224c8e8   d7065e-group2-sensor-temp-a109-1      0.55%     38.25MiB / 14.62GiB   0.26%     2.95MB / 4.13MB   0B / 856kB        4
+1b08364d64e1   d7065e-group2-sensor-temp-a323-1      0.98%     38.46MiB / 14.62GiB   0.26%     2.94MB / 4.12MB   0B / 856kB        4
+760d65596f74   d7065e-group2-sensor-co2-a323-1       0.59%     38.45MiB / 14.62GiB   0.26%     2.94MB / 4.07MB   4.1kB / 856kB     4
+b3572e2bfcb2   d7065e-group2-sensor-co2-a117-1       0.62%     38.07MiB / 14.62GiB   0.25%     2.95MB / 4.07MB   0B / 856kB        4
+3fb8abc8bfe5   d7065e-group2-sensor-co2-a109-1       0.46%     38.43MiB / 14.62GiB   0.26%     2.95MB / 4.07MB   0B / 856kB        4
+04f5ae9076ff   d7065e-group2-physics-1               1.56%     46.14MiB / 14.62GiB   0.31%     215MB / 23.1MB    0B / 852kB        6
+26528c382c4a   d7065e-group2-planner-1               0.27%     53.45MiB / 14.62GiB   0.36%     109MB / 5.03MB    0B / 905kB        9
+288ef32b9c3d   d7065e-group2-viewer-1                1.58%     37.69MiB / 14.62GiB   0.25%     28.1MB / 11.6MB   0B / 852kB        4
+47372ae6e4ed   d7065e-group2-occupancy_counter-1     2.03%     46.07MiB / 14.62GiB   0.31%     177MB / 13.3MB    0B / 860kB        4
+30a3b0b07988   d7065e-group2-occupancysim-1          0.35%     24.41MiB / 14.62GiB   0.16%     10.5MB / 1.46GB   6.47MB / 0B       12
+977f8bbfe52f   d7065e-group2-actuator-heat-a117-1    0.72%     37.7MiB / 14.62GiB    0.25%     538kB / 948kB     0B / 864kB        4
+80cc0ac38cd0   d7065e-group2-actuator-vent-a117-1    0.25%     37.68MiB / 14.62GiB   0.25%     492kB / 846kB     0B / 864kB        4
+afba70cf90fb   d7065e-group2-actuator-vent-a110-1    0.21%     37.38MiB / 14.62GiB   0.25%     559kB / 934kB     0B / 864kB        4
+b503639fe443   d7065e-group2-actuator-heat-a113c-1   0.26%     37.77MiB / 14.62GiB   0.25%     593kB / 1.05MB    57.3kB / 864kB    4
+e8b4ab0cadf6   d7065e-group2-actuator-vent-a109-1    0.47%     37.8MiB / 14.62GiB    0.25%     501kB / 860kB     0B / 864kB        4
+b6ad36698845   d7065e-group2-control-1               0.66%     46.91MiB / 14.62GiB   0.31%     182MB / 6.93MB    0B / 868kB        4
+24a871eb1d5c   d7065e-group2-actuator-vent-a113c-1   0.29%     37.67MiB / 14.62GiB   0.25%     492kB / 839kB     0B / 864kB        4
+1eda54d7b20f   d7065e-group2-actuator-heat-a110-1    0.22%     37.32MiB / 14.62GiB   0.25%     600kB / 1.06MB    0B / 864kB        4
+5e1779ea951b   d7065e-group2-actuator-heat-a109-1    1.16%     37.71MiB / 14.62GiB   0.25%     533kB / 940kB     0B / 864kB        4
+c174a75d4563   d7065e-group2-actuator-vent-a323-1    0.24%     37.28MiB / 14.62GiB   0.25%     441kB / 768kB     0B / 864kB        4
+bd4f91c19ff6   d7065e-group2-actuator-heat-a323-1    0.63%     37.3MiB / 14.62GiB    0.25%     453kB / 793kB     0B / 864kB        4
+beec5c86f816   d7065e-group2-buildsim-1              2.38%     57.8MiB / 14.62GiB    0.39%     146MB / 146MB     23.2MB / 0B       13
+a80f1fdbde64   d7065e-group2-broker-1                0.55%     13.01MiB / 14.62GiB   0.09%     48.7MB / 77.7MB   10.7MB / 3.75MB   1

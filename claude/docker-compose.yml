@@ -119,6 +119,7 @@ services:
       OCCUPANCY_URL: http://occupancysim:8081
       PIPELINE_URL: http://pipeline:8000
       PLAN_S: "10"
+      PLANNER_FORECAST: ${PLANNER_FORECAST:-timetable}   # timetable | persistence
     ports: ["127.0.0.1:8093:8000"]
     depends_on:
       broker: {condition: service_healthy}

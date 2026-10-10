@@ -2,7 +2,8 @@
 
 Every PLAN_S wall seconds, per room:
   1. pull the last 2 h of occupancy + the latest CO₂/temperature from the pipeline (history API)
-  2. forecast occupancy for the next 30 min (trained linear model, else persistence baseline)
+  2. forecast occupancy for the next 30 min: from today's room bookings (timetable) if the room has one,
+     else persistence. PLANNER_FORECAST=persistence disables the timetable (for the on/off comparison).
   3. roll the CO₂ mass balance forward for each ventilation level → smallest level that stays < limit
   4. publish a Plan (retained) — control may raise ventilation/setpoint from it, never lower
 
@@ -24,12 +25,14 @@ from common.mqtt import Bus
 from common.schemas import Plan
 from physics.model import outdoor_temperature, params_from_config
 from common.timeutil import parse_iso
-from planner.forecast import HORIZONS_MIN, STEP_MIN, Model, persistence, suggest_vent
+from planner.forecast import HORIZONS_MIN, STEP_MIN, Model, persistence, suggest_vent, timetable_forecast
 
 log = logging.getLogger("planner")
 
 PLAN_S = float(config.env("PLAN_S", "10"))
 HISTORY_MIN = 120
+FORECAST = config.env("PLANNER_FORECAST", "timetable")   # timetable | persistence
+TIMETABLE_TTL_S = 15.0                                     # wall seconds between timetable fetches
 
 
 class Planner:
@@ -47,6 +50,25 @@ class Planner:
         self.bus = Bus("planner")
         self.last_plans: dict[str, dict] = {}
         self._c = httpx.Client(timeout=5.0)
+        self.occupancy_url = config.env("OCCUPANCY_URL", "http://occupancysim:8081").rstrip("/")
+        self._lectures: list[dict] | None = None
+        self._lectures_at = 0.0
+
+    def lectures(self) -> list[dict] | None:
+        """Today's bookings from occupancysim (cached TIMETABLE_TTL_S). None = unavailable → persistence."""
+        if FORECAST != "timetable":
+            return None
+        if time.monotonic() - self._lectures_at > TIMETABLE_TTL_S:
+            self._lectures_at = time.monotonic()
+            try:
+                r = self._c.get(f"{self.occupancy_url}/api/state")
+                r.raise_for_status()
+                self._lectures = r.json()["sim"].get("lectures") or []
+            except (httpx.HTTPError, ValueError, KeyError) as e:
+                if self._lectures is not None:
+                    log.warning("timetable unavailable (%s) — falling back to persistence", e)
+                self._lectures = None
+        return self._lectures
 
     def history(self, room: str, sensor_type: str, minutes: int) -> list[dict]:
         r = self._c.get(f"{self.pipeline}/history", params={"room": room, "type": sensor_type, "minutes": minutes, "level": self.level})
@@ -77,7 +99,12 @@ class Planner:
         series = self.bins(occ_rows)
         mod = now.hour * 60 + now.minute
         cap = self.capacity[room]
-        if self.model:
+        lectures = self.lectures()
+        tt = timetable_forecast(lectures, self.level, room, mod, cap) if lectures is not None else None
+        if tt is not None:
+            occ_fc = tt
+            version = "timetable-v1"
+        elif self.model:
             occ_fc = self.model.predict(series, mod, cap)
             version = self.model.version
         else:
@@ -108,16 +135,18 @@ class Planner:
                 except (httpx.HTTPError, ValueError, KeyError) as e:
                     ok = False
                     log.warning("plan for %s failed: %s", r.name, e)
-            self.bus.health("ok" if ok else "degraded", f"model={self.model.version if self.model else 'persistence'}")
+            self.bus.health("ok" if ok else "degraded", f"forecast={FORECAST} timetable={'ok' if self._lectures is not None else 'n/a'}")
             time.sleep(max(0.0, PLAN_S - (time.monotonic() - t0)))
 
 
 def main() -> None:
     setup_logging()
     p = Planner()
-    log.info("planner: model=%s, limit=%s ppm, every %ss", p.model.version if p.model else "persistence", p.limit, PLAN_S)
+    log.info("planner: forecast=%s, model=%s, limit=%s ppm, every %ss", FORECAST, p.model.version if p.model else "persistence", p.limit, PLAN_S)
     run_in_thread(p.run, "planner-loop")
-    app = make_app("planner", lambda: {"status": "ok", "model": p.model.version if p.model else "persistence-baseline"})
+    app = make_app("planner", lambda: {"status": "ok", "forecast": FORECAST,
+                                         "timetable": "ok" if p._lectures is not None else "n/a",
+                                         "model": p.model.version if p.model else "persistence-baseline"})
 
     @app.get("/plans")
     def plans():

@@ -4,6 +4,10 @@ Model: one linear regression per horizon step h ∈ {5,10,…,30} min
     n̂(t+h) = w_h · [1, n(t), n(t−5), n(t−10), n(t−15), n(t−30), n(t−60), sin(tod), cos(tod)]
 trained by planner/train.py on our own recorded Parquet (planner/model.json). Until a model exists,
 `persistence` (n̂ = n(t)) is the baseline — and the baseline every evaluation must beat.
+The trained model lost to persistence (docs/forecast-notes.md), so it is not deployed.
+
+Default since 10 Oct: `timetable_forecast` — occupancy read from the day's room bookings
+(occupancysim's lecture list). Rooms without a booking fall back to persistence.
 
 Why not just roll the physics forward? Because the physics needs *future occupancy*; predicting that
 is the genuinely uncertain part. Rolling the CO₂ mass balance forward with the *predicted* occupancy
@@ -58,6 +62,39 @@ class Model:
 def persistence(series: list[float], capacity: float) -> list[float]:
     last = series[-1] if series else 0.0
     return [float(min(capacity, max(0.0, last)))] * len(HORIZONS_MIN)
+
+
+# Booking timetable (stands in for the university's booking system, e.g. TimeEdit).
+# occupancysim: students arrive 10 min before a lecture, the lecturer 15 min before.
+STUDENT_LEAD_MIN = 10
+LECTURER_LEAD_MIN = 15
+
+
+def timetable_forecast(lectures: list[dict], level: str, room: str, minute_of_day: float,
+                       capacity: float) -> list[float] | None:
+    """Occupancy for each horizon from today's bookings, or None if the room has no booking today
+    (then the caller falls back to persistence). `lectures` = occupancysim's /api/state sim.lectures:
+    {level, room, start, end (minutes of day), students (registered), seats}.
+    Uses REGISTERED students: in occupancysim everyone registered attends, so this is an optimistic
+    upper bound on forecast quality — a real booking system would need a no-show model."""
+    booked = [l for l in lectures if l.get("level") == level and l.get("room") == room]
+    if not booked:
+        return None
+    # No capacity cap here: registered students are the best information we have, and occupancysim
+    # over-books a lecture when every room in the slot is full (fullestWithRoom falls back to the
+    # emptiest lecture), so `students` can exceed `seats`. `capacity` is kept for the common signature.
+    out = []
+    for h in HORIZONS_MIN:
+        m = minute_of_day + h
+        n = 0.0
+        for l in booked:
+            start, end = float(l["start"]), float(l["end"])
+            if start - STUDENT_LEAD_MIN <= m < end:
+                n += float(l.get("students", 0))
+            if start - LECTURER_LEAD_MIN <= m < end:
+                n += 1.0
+        out.append(n)
+    return out
 
 
 def fit(X: np.ndarray, Y: np.ndarray, version: str) -> Model:

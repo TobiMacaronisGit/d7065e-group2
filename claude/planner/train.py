@@ -22,8 +22,8 @@ def load_series(parquet: str) -> dict[tuple[str, str], list[tuple[int, float]]]:
     """→ {(date, room): [(minute_of_day, occupancy), ...] resampled to 5-min bins}"""
     con = duckdb.connect()
     rows = con.execute(f"""
-        SELECT substr(sim_ts,1,10) AS d, room,
-               CAST(floor((hour(CAST(sim_ts AS TIMESTAMPTZ))*60 + minute(CAST(sim_ts AS TIMESTAMPTZ))) / {STEP_MIN}) AS INT) * {STEP_MIN} AS mod,
+                SELECT CAST(CAST(CAST(sim_ts AS TIMESTAMP) AS DATE) AS VARCHAR) AS d, room,
+               CAST(floor((hour(CAST(sim_ts AS TIMESTAMP))*60 + minute(CAST(sim_ts AS TIMESTAMP))) / {STEP_MIN}) AS INT) * {STEP_MIN} AS mod,
                max(value) AS n
         FROM read_parquet('{parquet}') WHERE type = 'occupancy'
         GROUP BY d, room, mod ORDER BY d, room, mod""").fetchall()

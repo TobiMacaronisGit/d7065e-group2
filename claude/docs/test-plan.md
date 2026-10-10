@@ -24,6 +24,7 @@ critique. The experiments in §3 are designed for that, not for showing the happ
 |---|---|---|
 | E2E-1 | `tests/e2e/test_loop.py` — publish a ventilation command, follow it through | actuator applies it → BuildSim shows the reached state → `physics` reads that state back → the next CO₂ readings reflect it. **This is the pass/fail "the loop closes" evidence.** |
 | E2E-2 | scenario run S1 (below), asserted from the pipeline afterwards | FR-01/02/03 thresholds hold over a full simulated day |
+| E2E-3 | **Stability run**: full stack (30 containers) left running, `docker inspect … RestartCount` + `docker stats --no-stream` at start and end | no container restarts or enters a restart loop. **Executed 10 Oct 2026:** ≈ 93 min (core containers since ≈ 11:51, snapshots 12:33 and 13:25), **0 restarts in all 30 containers**, total RAM ≈ 1.3 GiB; pipeline RSS grew 87 → 116 MiB (every `/query` re-reads all bronze JSONL). Raw output: [`results/stability.txt`](results/stability.txt) |
 
 ## 3. Scenario runs and experiments (the evidence for §11 of the report)
 
