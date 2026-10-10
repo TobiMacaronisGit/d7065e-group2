@@ -6,6 +6,7 @@ when it comes back, the broker's persistent session delivers what it missed (QoS
 
 HTTP API (also used by Grafana via the Infinity plugin and by planner/train.py):
     GET /history?room=A109&type=co2&minutes=120     recent readings of one sensor
+        [&until=<sim ISO>&max_age_s=<wall s>]       window ends at `until`, rows of this run only
     GET /query?sql=SELECT ...                        read-only DuckDB over the bronze views
     GET /stats                                       row counts, last compaction
     POST /compact                                    rebuild silver parquet now
@@ -72,8 +73,9 @@ def main() -> None:
     app = make_app("pipeline", lambda: {"status": "ok", "rows": p.store.rows})
 
     @app.get("/history")
-    def history(room: str, type: str = Query(alias="type"), minutes: int = 120, level: str = "level0"):
-        return p.store.history(room, type, minutes, level)
+    def history(room: str, type: str = Query(alias="type"), minutes: int = 120, level: str = "level0",
+                until: str | None = None, max_age_s: float | None = None):
+        return p.store.history(room, type, minutes, level, until, max_age_s)
 
     @app.get("/query")
     def query(sql: str):

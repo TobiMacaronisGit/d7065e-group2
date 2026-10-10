@@ -85,7 +85,9 @@ class Physics:
             "room": room, "level": self.level, "sim_ts": self.sim_ts, "clock_degraded": self.clock.degraded,
             "co2_ppm": round(s.co2_ppm, 1), "temp_c": round(s.temp_c, 2), "occupants": self.occupants[room],
             "vent_level": a.get("vent"), "setpoint_c": a.get("heat"), "heater_w": round(s.heater_w),
-            "energy_kwh": round(s.energy_kwh, 3), "t_out_c": round(self.t_out, 1), "buildsim_ok": self.buildsim_ok,
+            "energy_kwh": round(s.energy_kwh, 3), "ahu_w": round(s.ahu_w), "ahu_kwh": round(s.ahu_energy_kwh, 3),
+            "total_kwh": round(s.energy_kwh + s.ahu_energy_kwh, 3),
+            "t_out_c": round(self.t_out, 1), "buildsim_ok": self.buildsim_ok,
         }
 
     def run(self) -> None:

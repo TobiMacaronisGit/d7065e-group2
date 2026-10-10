@@ -40,6 +40,11 @@ from the pipeline (`/query`), not from logs, so they are reproducible.
 | E4 | **Scaling / breaking point**: 5 → 10 → 20 → 40 rooms (regenerate Compose), and sample interval 2 s → 0.5 s | median + p95 decision interval, MQTT backlog, container RSS/CPU, host load | NFR-01 — find where it *stops* working and say why |
 | E5 | **Forecast quality**: model vs. persistence baseline, trained and tested on different simulated dates | MAE per horizon (5…30 min), from `planner/train.py` | FR-04 — an honest "no better than trivial" result is a result |
 
+**Executed 10 Oct 2026 (live):** S1 (= run R5), E3 as three variants — off (R1), persistence (R4),
+timetable (R5) — and E5. Results: [`results/e3-summary.md`](results/e3-summary.md),
+[`results/e3-results.md`](results/e3-results.md), [`results/train.txt`](results/train.txt).
+Runs R2/R3 are invalid (history-window bug, fixed and documented in the summary). E1, E2, E4 not executed.
+
 ## 4. Fault injection (rubric B and D)
 
 | ID | Fault | How | Expected behaviour | Measured |
