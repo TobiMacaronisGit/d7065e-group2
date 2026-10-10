@@ -1,0 +1,11 @@
+# make train — Sat 10 Oct 2026, 12:53 (lr-v1, split by sim date, test = last day)
+{"sensor":239786,"actuator":39910,"plan":15740,"decision":32780,"health":240375}
+train days ['2026-10-02', '2026-10-03', '2026-10-04', '2026-10-05', '2026-10-06', '2026-10-07', '2026-10-08', '2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-13', '2026-10-14', '2026-10-15', '2026-10-16', '2026-10-17', '2026-10-18', '2026-10-19']  test day 2026-10-20  samples train=23755 test=1105
+horizon  MAE(model)  MAE(persistence)
+    5 min       2.17       1.29
+   10 min       3.97       2.36
+   15 min       5.48       3.19
+   20 min       6.90       3.99
+   25 min       8.09       4.65
+   30 min       9.21       5.34
+saved planner/model.json  (moved to docs/results/model-lr-v1.json, NOT deployed: worse than persistence)
