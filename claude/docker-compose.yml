@@ -52,9 +52,9 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:11.2.0
+    image: grafana/grafana:11.6.0
     environment:
-      GF_INSTALL_PLUGINS: yesoreyeram-infinity-datasource
+      GF_INSTALL_PLUGINS: "yesoreyeram-infinity-datasource 4.1.1"
       GF_AUTH_ANONYMOUS_ENABLED: "true"
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
       GF_AUTH_DISABLE_LOGIN_FORM: "true"

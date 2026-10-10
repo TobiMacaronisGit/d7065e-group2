@@ -1,4 +1,4 @@
-##File for command shortcuts "make + <command from the list>
+#File for command shortcuts "make + <command from the list>
 .PHONY: gen up down logs test e2e seed compact train diagrams clean
 
 gen:                ## regenerate compose.devices.yml from config/rooms.json
