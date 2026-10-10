@@ -1,4 +1,6 @@
-# C4 Level 1 — System Context. Render: d2 --theme 0 context.d2 context.svg
+# Updated copy of context.d2; original retained unchanged.
+# Implementation reference: 20756de. Arrows show information flow.
+# Render: d2 --theme 0 context-updated.d2 context-updated.svg
 direction: down
 
 manager: Building manager {
@@ -10,24 +12,29 @@ occupant: Occupants {
 
 sys: |md
   # Ventilation & climate control
-  **[our system]**
+  **[our system — five rooms on level 0]**
 
-  Senses CO₂, temperature and occupancy per room,
-  decides ventilation and heating setpoints,
-  and drives the actuators.
+  Room physics, simulated sensors and actuators,
+  reactive control, advisory planning,
+  history and presentation integration.
+
+  Balances CO₂, thermal comfort and
+  radiator + air-handling-unit heating energy.
 | {
   style.fill: "#dbeafe"
   style.stroke: "#2563eb"
-  style.bold: true
 }
 
 buildsim: |md
   # BuildSim
   **[external, course-provided]**
 
-  Shared building state: rooms, equipment,
-  sensor values, actuator states, 3D viewer.
-  Passive — no physics, no history, no decisions.
+  Shared rooms, equipment, occupancy,
+  sensor values and reached actuator states.
+  Browser-based 3D building view.
+
+  Passive state; project physics and decisions
+  run in separate services.
 | {
   style.stroke-dash: 4
   style.fill: "#f3f4f6"
@@ -37,16 +44,29 @@ occupancysim: |md
   # occupancysim
   **[external, course-provided]**
 
-  Generates the people and the simulated clock.
+  Simulated people, lecture bookings and clock.
   Writes occupancy and entities to BuildSim.
+  Evaluation clock: 60 sim-seconds / wall-second.
 | {
   style.stroke-dash: 4
   style.fill: "#f3f4f6"
 }
 
-manager -> sys: "monitors decisions, room state and health [HTTP / Grafana]"
-manager -> buildsim: "watches the 3D building [WebSocket, browser]"
-occupant -> occupancysim: "are simulated people\n(they never talk to the system)"
-occupancysim -> buildsim: "PUT occupancy, entities [REST]"
-sys -> buildsim: "reads occupancy + actuator state,\nwrites sensor values, actuator states,\nroom layers and alerts [REST]"
-sys -> occupancysim: "reads the simulated clock [REST]"
+occupant -> occupancysim: "simulated presence and scheduled arrivals"
+occupancysim -> buildsim: "occupancy and entities [REST writes]"
+occupancysim -> sys: "clock + lecture bookings [REST read responses]"
+buildsim -> sys: "occupancy + reached actuator states [REST read responses]"
+sys -> buildsim: "sensor values, reached states, room layers and alerts [REST writes]"
+sys -> manager: "history, decisions and health [Grafana / HTTP]"
+buildsim -> manager: "live 3D room conditions and alerts [browser]"
+
+scope: |md
+  **Scope and boundary**
+  A109 / A117: lecture rooms; A110: fika; A323 / A113C: offices.
+  No manual-override workflow is implemented.
+  Provided services and project services share a lab host/network;
+  the physical-truth boundary is a code convention, not an access restriction.
+| {
+  style.fill: "#fffbeb"
+  style.stroke-dash: 3
+}

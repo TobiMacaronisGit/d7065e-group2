@@ -1,32 +1,62 @@
-# C4 Dynamic diagram — "the 10:15 lecture fills A109".  Render: d2 --theme 0 dynamic.d2 dynamic.svg
-# Numbered runtime interactions between the containers of container.d2.
-# The point of this diagram: show that step 9 feeds step 1 — the loop is closed, not a pipeline.
-direction: right
+# Updated copy of dynamic.d2; original retained unchanged.
+# Implementation reference: 20756de.
+# A117 has the 10:15 lecture in the recorded scenario; values are symbolic.
+# Render: d2 --theme 0 dynamic-updated.d2 dynamic-updated.svg
+shape: sequence_diagram
 
-occupancysim: occupancysim {style.stroke-dash: 4}
-buildsim: BuildSim {style.stroke-dash: 4}
-occ: occupancy_counter
-physics: physics
-sensor: sensor-co2-A109
-broker: broker {shape: queue}
-pipeline: pipeline {shape: cylinder}
-planner: planner
-control: control
-actuator: actuator-vent-A109
+occupancysim: occupancysim {
+  style.fill: "#f3f4f6"
+}
+pipeline: pipeline {
+  style.fill: "#e0e7ff"
+}
+planner: planner {
+  style.fill: "#dbeafe"
+}
+broker: MQTT broker {
+  style.fill: "#e0e7ff"
+}
+control: control {
+  style.fill: "#dbeafe"
+}
+actuator: actuator-vent-A117 {
+  style.fill: "#dcfce7"
+}
+buildsim: BuildSim {
+  style.fill: "#f3f4f6"
+}
+physics: physics {
+  style.fill: "#fef3c7"
+}
+sensor: sensor-co2-A117 {
+  style.fill: "#dcfce7"
+}
 
-occupancysim -> buildsim: 1. PUT /api/occupancy\n(students enter A109)
-buildsim -> occ: 2. GET /api/occupancy → 55 persons
-occ -> broker: 3. sensor/occupancy = 55
-broker -> pipeline: 4. store (bronze JSONL)
-pipeline -> planner: 5. GET /history occupancy 120 min
-planner -> broker: 6. plan: forecast peak 1180 ppm\n→ suggested_vent 2 (retained)
-physics -> sensor: 7. truth CO₂ 780 ppm (rising)
-sensor -> broker: 8. sensor/co2 = 793 (+noise, +30 s lag)
-broker -> control: 9. reading + plan
-control -> broker: 10. command vent → 2\nreason "CO2 793 rising; planner expects 1180 in 30 min"
-broker -> actuator: 11. command (QoS 1, retained)
-actuator -> actuator: 12. validate issuer, range, freshness
-actuator -> buildsim: 13. travel 0.5 level/s → PUT state 2
-buildsim -> physics: 14. GET actuator state → vent 2
-physics -> physics: 15. CO₂ mass balance: Q↑ → CO₂ falls,\nheat loss ↑ → heater compensates
-physics -> sensor: 16. next truth 762 ppm → back to step 7 {style.stroke: "#dc2626"; style.bold: true}
+planner -> occupancysim: "1. GET /api/state: current clock + today's bookings"
+occupancysim -> planner: "2. sim.lectures: A117 10:15–12:00; registered students"
+planner -> pipeline: "3. GET /history: observed occupancy/CO₂/temperature; until + max_age_s"
+pipeline -> planner: "4. Current-window observations, ordered by simulated time"
+planner -> planner: "5. Forecast 5…30 sim-min; early student/lecturer arrival; roll out levels 0…3"
+planner -> broker: "6. Retained Plan: suggested level u*, peak at u*, preheat target"
+broker -> control: "7. Deliver plan; control already holds live observed readings"
+control -> control: "8. Every 5 s wall: quality/mode, reactive demand, higher plan, dwell + clamp"
+control -> broker: "9. Publish changed-target command and auditable decision"
+broker -> actuator: "10. Deliver command [QoS 1, retained]"
+actuator -> actuator: "11. Validate ID, issuer, numeric range and wall age; travel at 0.5 level/s"
+actuator -> buildsim: "12. PUT /api/actuators/{id}/state: reached ventilation"
+physics -> buildsim: "13. GET reached actuator states + occupancy"
+buildsim -> physics: "14. Actual reached level + current persons"
+physics -> physics: "15. Integrate CO₂ and heat; 18 °C supply, 75% recovery; radiator + AHU energy"
+sensor -> physics: "16. GET /rooms/A117: new physical truth"
+physics -> sensor: "17. CO₂ truth; sensor adds 30-sim-second lag, noise and rounding"
+sensor -> broker: "18. Publish next observed CO₂ reading"
+broker -> control: "19. Feedback: next decision uses the changed observation"
+broker -> pipeline: "20. Archive observations, commands, reached states, plans and decisions"
+
+# This is an illustrative order of interactions, not a recorded event trace.
+# No invented sensor readings or claimed experiment outcomes are included.
+# Commands are emitted only when targets change; decisions are emitted each evaluation.
+# Heat commands follow the same validation/travel/read-back path as ventilation.
+# occupancy_counter separately publishes observed head counts via MQTT.
+# Broker delivery to pipeline is concurrent with the live exchanges, not a final batch.
+# Reactive control continues if history or timetable requests fail.
