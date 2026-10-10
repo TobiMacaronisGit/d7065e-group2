@@ -13,7 +13,7 @@ import json
 import logging
 import os
 import threading
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -76,18 +76,37 @@ class Storage:
         return out
 
     # -- queries ------------------------------------------------------------------------
-    def history(self, room: str, sensor_type: str, minutes: int, level: str = "level0") -> list[dict[str, Any]]:
-        """Recent readings straight from bronze (always fresh), ordered by sim_ts."""
+    def history(self, room: str, sensor_type: str, minutes: int, level: str = "level0",
+                until: str | None = None, max_age_s: float | None = None) -> list[dict[str, Any]]:
+        """Readings of one sensor in the `minutes` sim-minutes up to `until`, straight from bronze, by sim_ts.
+
+        Without `until` the window ends at the latest stored reading. That is only right while the
+        simulated clock moves forward: after the clock jumps back or a simulated day is replayed, the
+        "latest" reading belongs to another run, even another date (found 10 Oct: at sim 08:30 on 21 Oct
+        this returned 22 Oct 10:07-10:37). Callers that know the time (the planner) therefore pass
+        `until` = their own sim time and `max_age_s`, which keeps only rows received in the last
+        max_age_s wall seconds, so rows from an earlier replay of the same sim times are ignored."""
         glob = str(self.root / "bronze" / "*" / "sensor.jsonl")
+        filt, params = "room = ? AND type = ? AND level = ?", [room, sensor_type, level]
+        if max_age_s:
+            filt += " AND CAST(recv_ts AS TIMESTAMPTZ) >= CAST(? AS TIMESTAMPTZ)"
+            params.append((datetime.now(timezone.utc) - timedelta(seconds=float(max_age_s))).isoformat())
+        if until:
+            anchor = "SELECT CAST(? AS TIMESTAMPTZ) AS latest"
+            params.append(until)
+        else:
+            anchor = "SELECT max(CAST(sim_ts AS TIMESTAMPTZ)) AS latest FROM r"
+        params.append(minutes)
         con = duckdb.connect()
         try:
+            con.execute("SET TimeZone = 'UTC'")      # naive timestamps in bronze are UTC, on every host
             rows = con.execute(
-                f"""WITH r AS (SELECT * FROM read_json_auto('{glob}', union_by_name=true)
-                               WHERE room = ? AND type = ? AND level = ?),
-                         m AS (SELECT max(sim_ts) AS latest FROM r)
+                f"""WITH r AS (SELECT * FROM read_json_auto('{glob}', union_by_name=true) WHERE {filt}),
+                         m AS ({anchor})
                     SELECT sim_ts, ts, value, seq, quality FROM r, m
-                    WHERE CAST(sim_ts AS TIMESTAMPTZ) >= CAST(latest AS TIMESTAMPTZ) - INTERVAL (?) MINUTE
-                    ORDER BY sim_ts""", [room, sensor_type, level, minutes]).fetchall()
+                    WHERE CAST(sim_ts AS TIMESTAMPTZ) >= m.latest - INTERVAL (?) MINUTE
+                      AND CAST(sim_ts AS TIMESTAMPTZ) <= m.latest
+                    ORDER BY sim_ts""", params).fetchall()
         except duckdb.Error as e:
             if "No files found" in str(e):
                 return []

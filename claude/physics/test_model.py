@@ -1,5 +1,6 @@
 """Unit tests for the physical model (run: pytest physics/)."""
 import math
+from dataclasses import replace
 
 from physics.model import RoomParams, RoomState, outdoor_temperature, step, ventilation_flow
 
@@ -46,3 +47,39 @@ def test_outdoor_temperature_seasonal():
     assert outdoor_temperature(20, 5) < -5
     assert outdoor_temperature(200, 15) > 10
     assert math.isfinite(outdoor_temperature(1, 0))
+
+
+# --- supply air from an air-handling unit (10 Oct) -------------------------------------------------------
+AHU = replace(P, supply_temp_c=18.0, heat_recovery=0.75)
+
+
+def run_p(params, minutes, occupants, vent, setpoint, t_out=-10.0, s=None):
+    s = s or RoomState(co2_ppm=420, temp_c=21)
+    for _ in range(minutes):
+        s = step(params, s, occupants, vent, setpoint, t_out, 60)
+    return s
+
+
+def test_without_supply_temp_the_model_is_unchanged():
+    s = run(60, occupants=20, vent=2, setpoint=21)
+    assert s.ahu_energy_kwh == 0.0 and s.ahu_w == 0.0
+
+
+def test_tempered_supply_air_keeps_the_room_warmer_and_saves_room_heat():
+    raw = run_p(P, 60, occupants=60, vent=2, setpoint=21)
+    tempered = run_p(AHU, 60, occupants=60, vent=2, setpoint=21)
+    assert tempered.temp_c > raw.temp_c
+    assert tempered.energy_kwh < raw.energy_kwh
+
+
+def test_ahu_energy_is_counted_and_heat_recovery_reduces_it():
+    no_hr = run_p(replace(AHU, heat_recovery=0.0), 60, occupants=60, vent=2, setpoint=21)
+    hr = run_p(AHU, 60, occupants=60, vent=2, setpoint=21)
+    assert no_hr.ahu_energy_kwh > hr.ahu_energy_kwh > 0, "ventilation must never be free"
+
+
+def test_no_ventilation_no_ahu_energy_and_co2_unaffected_by_supply_temp():
+    off = run_p(AHU, 60, occupants=0, vent=0, setpoint=21)
+    assert off.ahu_energy_kwh == 0.0
+    a, b = run_p(P, 30, 60, 2, 21), run_p(AHU, 30, 60, 2, 21)
+    assert abs(a.co2_ppm - b.co2_ppm) < 1e-9, "supply temperature must not change the CO₂ balance"

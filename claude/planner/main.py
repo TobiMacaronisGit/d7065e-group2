@@ -71,7 +71,13 @@ class Planner:
         return self._lectures
 
     def history(self, room: str, sensor_type: str, minutes: int) -> list[dict]:
-        r = self._c.get(f"{self.pipeline}/history", params={"room": room, "type": sensor_type, "minutes": minutes, "level": self.level})
+        # Anchor the window at OUR sim time and keep only rows received while it elapsed (+60 s margin).
+        # Without this the pipeline anchors at the latest stored reading, which after a clock jump or a
+        # replayed day is another run's data (bug found 10 Oct, invalidated the first E3 runs).
+        max_age_s = minutes * 60.0 / max(self.clock.factor, 1e-3) + 60.0
+        r = self._c.get(f"{self.pipeline}/history", params={
+            "room": room, "type": sensor_type, "minutes": minutes, "level": self.level,
+            "until": self.clock.now().isoformat(), "max_age_s": max_age_s})
         r.raise_for_status()
         return r.json()
 

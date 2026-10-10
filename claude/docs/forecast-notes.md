@@ -60,7 +60,15 @@ model. occupancysim exposes bookings with exact attendance; a credible evaluatio
 no-show model, which the simulator does not provide. We therefore kept persistence and list a
 timetable-based forecast with a no-show model as future work."*
 
-## 4. Decision still open (p2-5)
+## 4. Decision (p2-5) — taken 10 Oct after the live E3 runs
+
+**The planner stays, with the timetable forecast** (rooms without bookings fall back to persistence).
+Live result for the lecture rooms: reactive only 149 sim-min over 1000 ppm, persistence 20, timetable 0,
+at +14 % / +16 % heating energy. Details: [`results/e3-summary.md`](results/e3-summary.md).
+Section 3's "future work" became the implementation (`planner/forecast.py: timetable_forecast`), using
+*registered* students — the missing no-show model remains a stated limitation.
+
+### Options considered before the decision
 
 - **Keep the planner with persistence forecast + CO₂ rollout** (what is running now). Story: trained,
   evaluated on a held-out day, lost to the baseline, so persistence is used; the planner still rolls the
