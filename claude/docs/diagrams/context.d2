@@ -1,5 +1,4 @@
-# C4 Level 1 — System Context.  Render: d2 --theme 0 context.d2 context.svg
-# Everything internal is hidden on purpose: this diagram exists to fix the system boundary.
+# C4 Level 1 — System Context. Render: d2 --theme 0 context.d2 context.svg
 direction: down
 
 manager: Building manager {
@@ -45,9 +44,9 @@ occupancysim: |md
   style.fill: "#f3f4f6"
 }
 
-manager -> sys: monitors decisions, room state and health [HTTP / Grafana]
-manager -> buildsim: watches the 3D building [WebSocket, browser]
-occupant -> occupancysim: are simulated as people\n(they never talk to the system)
-occupancysim -> buildsim: PUT occupancy, entities [REST]
-sys -> buildsim: reads occupancy + actuator state,\nwrites sensor values, actuator states,\nroom layers and alerts [REST]
-sys -> occupancysim: reads the simulated clock [REST]
+manager -> sys: "monitors decisions, room state and health [HTTP / Grafana]"
+manager -> buildsim: "watches the 3D building [WebSocket, browser]"
+occupant -> occupancysim: "are simulated people\n(they never talk to the system)"
+occupancysim -> buildsim: "PUT occupancy, entities [REST]"
+sys -> buildsim: "reads occupancy + actuator state,\nwrites sensor values, actuator states,\nroom layers and alerts [REST]"
+sys -> occupancysim: "reads the simulated clock [REST]"
