@@ -130,6 +130,10 @@ rather than 1000 ppm helps, but this is exactly the gap the planner exists to cl
 E3 measures. There is also a physical limit: at the maximum ventilation level a room holds 1000 ppm only for
 about 72 persons (A109), 82 (A117) and 47 (A110), so above that no controller can meet FR-01 (§9).
 
+> **Note (10 Oct):** these limits are for the old ventilation (`ach_per_vent_level` 1.3). With 3.6 the same
+> formula gives about 129 / 147 / 85 persons at level 2 and 192 / 219 / 127 at level 3 (A109 / A117 / A110);
+> see `docs/results/predictions.md`.
+
 ### 3.4 Data quality as a control input
 
 A rule controller that trusts its inputs fails the interesting way: a CO₂ sensor frozen on 700 ppm looks
@@ -367,7 +371,7 @@ volume (retained messages and queued sessions) and the `./data` mount of the pip
 | **Frozen-sensor detection is slower than NFR-05.** 8 samples at 2 sim-min plus a control round is about 14 to 19 sim-min | NFR-05 (10 sim-min) fails by configuration | measure in F1; lower `frozen_after_samples` and accept more false alarms, or report the gap | predicted from configuration |
 | **The outdoor temperature's daily term is inverted** in `physics/model.py`: the coldest hour is 15:00 and the warmest 03:00, against a docstring that says the opposite | afternoon lectures meet the worst weather; heating energy and comfort are biased in every run | change `-daily_amplitude_c` to `+daily_amplitude_c` (maximum at 15:00; a cosine cannot also put the minimum at 05:00) and add a test; re-run after the fix | found offline |
 | **FR-02 is not reachable as configured.** The heater is proportional, so the room settles below the setpoint (3 % of occupied time in band at 21 °C, 98 % at 22 °C), and a lecture room in setback needs about 3.8 h to heat from 17 to 20 °C in September | FR-02 (90 % in band) fails for lecture rooms | raise `setpoint_occupied_c` to 22, use a pre-heat lead longer than the planner's 30 min or a shallower setback, or restrict FR-02 to rooms that are occupied continuously | predicted offline |
-| **FR-01 has a physical limit.** At maximum ventilation a room holds 1000 ppm only for about 72 persons (A109), 82 (A117), 47 (A110), 6 (offices) | above that no controller can meet FR-01, however good the planner | report the scenario's occupancy against these limits | predicted offline |
+| **FR-01 has a physical limit.** At maximum ventilation a room holds 1000 ppm only for about 72 persons (A109), 82 (A117), 47 (A110), 6 (offices). *Old ventilation (1.3 ACH/level); since 10 Oct (3.6): 192 / 219 / 127 / 16–17 at level 3* | above that no controller can meet FR-01, however good the planner | report the scenario's occupancy against these limits | predicted offline |
 | The heater cannot carry the winter trade-off: with its 80 W/m² it holds 21 °C only above about +6 °C outdoors at ventilation level 2 (about −1 °C with 70 persons), and above about −9 °C with no ventilation | in January the heater saturates, so energy and comfort comparisons degenerate | choose the evaluation date with this in mind and say which one it is | predicted offline |
 | The 5 sim-min criterion of NFR-03 cannot discriminate: the control round is itself 5 sim-min | E2 passes with or without hysteresis | report total changes or oscillation amplitude as well (hysteresis cut vent changes by about 17 % offline) | predicted offline |
 | The planner's benefit comes from sizing ventilation with the physics rollout, not from forecast skill: a persistence forecast is as good as a perfect one at 50 and 70 persons | the premise of D-07 (forecasting future occupancy) may not show in E3 | evaluate the forecast (E5) and the planner's benefit (E3) separately, and say so | predicted offline |
@@ -412,14 +416,14 @@ logs.
 
 ### 10.2 Scenario and experiments
 
-| Id | What is run | Prediction written before the run | Result |
-|---|---|---|---|
-| S1 | One simulated weekday, full system | FR-01 holds while the lecture is below the room's capacity; FR-02 fails for the lecture rooms (cold start, proportional heater); the rest per §10.1 | Result: FR-01 pass below capacity, FR-02 fail |
-| E1 | Full system against a fixed-schedule baseline (vent and heat on office hours) | Passes: 20 to 46 % less heater energy, because the baseline ventilates and heats an empty room. Comfort is poor in both | Result: −46 % kWh (September), −21 % (January), model only |
-| E2 | Hysteresis on and off | Both pass the 5 sim-min criterion by construction; the difference is only in total changes (about 17 % fewer with hysteresis) | Result: 11 against 13 vent changes; both pass the 5 sim-min criterion |
-| E3 | Planner on and off | At least 50 % fewer exceedance sim-min for 50 to 70 persons, almost entirely from sizing ventilation with the physics rollout. Heater energy rises (about 44 to 59 kWh in the model) | Result: 96 % fewer exceedance sim-min at 70 persons, about 1.2 kWh more heating |
-| E4 | 5, 10, 20, 40 rooms and sample interval 2 s down to 0.5 s | Breaks on container resources, not on the architecture (a consequence of D-01) |
-| E5 | Forecast against persistence, split by simulated date | May barely beat persistence, because occupancysim's day plans are smooth; say so plainly. The offline run points the same way: a perfect forecast adds about one point over persistence | 
+| Id  | What is run                                                                   | Prediction written before the run                                                                                                                                                       | Result                                                                          |
+| --- | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| S1  | One simulated weekday, full system                                            | FR-01 holds while the lecture is below the room's capacity; FR-02 fails for the lecture rooms (cold start, proportional heater); the rest per §10.1                                     | Result: FR-01 pass below capacity, FR-02 fail                                   |
+| E1  | Full system against a fixed-schedule baseline (vent and heat on office hours) | Passes: 20 to 46 % less heater energy, because the baseline ventilates and heats an empty room. Comfort is poor in both                                                                 | Result: −46 % kWh (September), −21 % (January), model only                      |
+| E2  | Hysteresis on and off                                                         | Both pass the 5 sim-min criterion by construction; the difference is only in total changes (about 17 % fewer with hysteresis)                                                           | Result: 11 against 13 vent changes; both pass the 5 sim-min criterion           |
+| E3  | Planner on and off                                                            | At least 50 % fewer exceedance sim-min for 50 to 70 persons, almost entirely from sizing ventilation with the physics rollout. Heater energy rises (about 44 to 59 kWh in the model)    | Result: 96 % fewer exceedance sim-min at 70 persons, about 1.2 kWh more heating |
+| E4  | 5, 10, 20, 40 rooms and sample interval 2 s down to 0.5 s                     | Breaks on container resources, not on the architecture (a consequence of D-01)                                                                                                          |                                                                                 |
+| E5  | Forecast against persistence, split by simulated date                         | May barely beat persistence, because occupancysim's day plans are smooth; say so plainly. The offline run points the same way: a perfect forecast adds about one point over persistence |                                                                                 |
 
 ### 10.3 Fault injection
 
