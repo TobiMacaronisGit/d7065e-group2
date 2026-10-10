@@ -1,5 +1,10 @@
 # E3 / S1 — planner off, persistence, timetable (live runs, 10 Oct 2026)
 
+> **Two rounds.** Round 1 (R1–R5, below) ran with the original physics: fresh air at outdoor temperature,
+> 80 W/m² radiators. It showed 0 % comfort in every variant, so the physics was made realistic (AHU supply
+> air, heat recovery, radiator sized for the envelope) and the experiment was repeated as **round 2
+> (R6–R8) — the final configuration**. Round 2 is at the end of this file; R8 is S1.
+
 Raw data: [`e3-runs.txt`](e3-runs.txt) (run windows + physics energy), [`e3-results.md`](e3-results.md)
 (per-room tables from `scripts/compare_runs.py`). Predictions written before the runs:
 [`predictions.md`](predictions.md) (committed before R1).
@@ -94,3 +99,69 @@ investigated; R4/R5 have complete data.
 **The planner stays, with the timetable forecast and persistence as fallback** (rooms without
 bookings, or occupancysim unreachable). It is the only variant that meets FR-01 in the lecture rooms.
 The trained linear model (E5, [`train.txt`](train.txt)) lost to persistence and is not deployed.
+
+
+---
+
+# Round 2 — final configuration (R6 / R7 / R8)
+
+## What changed between the rounds (physics only — control, planner and rules unchanged)
+
+| | Round 1 (R1–R5) | Round 2 (R6–R8) | Why |
+|---|---|---|---|
+| Mechanical ventilation air | at outdoor temperature (≈ −2…+3.5 °C) | **AHU supply air 18 °C** | real buildings temper supply air; infiltration still enters at outdoor temperature |
+| Heat recovery | none | **75 %** | plate exchangers 70–90 %, rotary wheels ≈ 80 % ([Wikipedia: Heat recovery ventilation](https://en.wikipedia.org/wiki/Heat_recovery_ventilation)) |
+| AHU energy | not modelled | **counted separately** (`ahu_kwh`) | ventilation must never look free |
+| Radiator | 80 W/m², gain 40 W/(K·m²) (band 2 K) | **130 W/m², gain 130 (band 1 K)** | sized for envelope loss at design outdoor temperature: 2.5 W/(K·m²)·(21 − (−30)) ≈ 130 W/m² (design temperature for Luleå assumed, not sourced) |
+
+Prediction for round 2: Prediction C in [`predictions.md`](predictions.md), committed (`9e47ebe`) before
+the evaluation.
+
+## Result — lecture rooms A109 + A117
+
+| Metric | R6 off | R7 persistence | R8 timetable |
+|---|---|---|---|
+| CO₂ > 1000 ppm while occupied (sim-min) | 122 | 2 (**−98 %**) | **0 (−100 %)** |
+| Peak CO₂ (ppm) | 1276 | 1002 | 920 |
+| Vent changes | 36 | 17 | 10 |
+| Comfort 20–24 °C (occupied sim-min) | 70 % (A109 63, A117 73) | 69 % (61, 71) | **85 % (A109 87, A117 84)** |
+| Energy, all rooms: heater + AHU (kWh) | 259.5 | 280.7 (+8 %) | 282.6 (+9 %) |
+
+Other rooms (R8): A110 (fika, no bookings) 28 sim-min > 1000 ppm, comfort 25 %; offices ≈ 80 % comfort.
+
+Final system against round 1 (R8 vs R5): comfort 0 % → 85 %, energy 324.6 → 282.6 kWh (−13 %).
+
+## Prediction C against results
+
+| Prediction | Result |
+|---|---|
+| CO₂: R6 ≈ R1, R7 ≈ R4, R8 ≈ R5 (supply temperature does not enter the CO₂ balance) | ✅ in direction: 122 / 2 / 0 vs 149 / 20 / 0 — see run-to-run variance below |
+| Comfort R8: A109 ≈ 95 %, A117 ≈ 91 % | ❌ measured 87 % / 84 % — about 8 points lower |
+| Comfort R6, R7 clearly below R8 | ✅ 70 % / 69 % vs 85 % |
+| Energy R6 < R7 < R8 | ✅ 259.5 < 280.7 < 282.6 kWh |
+
+**Why R8 stays below the offline prediction (likely, not verified):** the offline run pre-heated 60 min
+before a lecture; the live planner switches to 21 °C only once its 30-min occupancy forecast contains the
+lecturer (≈ 45 min before start). In addition the live metric uses sensor readings (30 s lag, noise) and
+the occupancy counter, and the heat actuator is rate-limited.
+
+**Run-to-run variance.** Between rounds the CO₂ side is identical (same ventilation, rules and planner;
+heating does not enter the CO₂ balance), yet reactive-only gave 149 (R1) vs 122 (R6) and persistence
+20 (R4) vs 2 (R7) exceedance sim-min. That spread is noise from sensor noise and the clock jump at the
+start of each run — single runs per variant are therefore indicative, not precise.
+
+## What round 2 says
+
+1. **The planner result holds** with the new physics: −98 % (persistence) and −100 % (timetable).
+2. **Only the timetable improves comfort** (85 % vs ≈ 70 %): it is the only variant that pre-heats before
+   people arrive. Persistence reacts when the room is already full — fine for CO₂, too late for heat.
+3. **FR-02 still fails, narrowly** (85 % < 90 %). The remaining gap is the cold start after the 17 °C
+   setback; a longer timetable-driven pre-heat (the timetable knows lectures hours ahead) is the obvious
+   next step.
+4. **The trade-off is now honest and smaller:** +9 % energy for clean air and better comfort, with the
+   ventilation cost visible in the AHU counter (R6 → R8: AHU 36.1 → 47.0 kWh for all rooms).
+
+## Decision (updated)
+
+Unchanged: **the planner stays, timetable forecast with persistence fallback.** In round 2 it is the only
+variant that meets FR-01 in the lecture rooms and the only one that moves comfort towards FR-02.
