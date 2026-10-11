@@ -1,0 +1,78 @@
+F1 A109-co2 stuck injected at sim 2026-10-21T08:30:05Z (wall UTC 2026-10-11 10:08:58+00)
+F1 cleared at sim 2026-10-21T09:10:12Z
+2026-10-21T08:30:12 NORMAL 2 CO2 839 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:35:12 NORMAL 2 CO2 871 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:40:12 NORMAL 2 CO2 852 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:45:12 NORMAL 2 CO2 861 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:50:12 NORMAL 2 CO2 887 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:55:12 NORMAL 2 CO2 869 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T09:00:12 NORMAL 2 CO2 858 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T09:05:12 NORMAL 2 CO2 855 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T09:10:12 NORMAL 2 CO2 882 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+F1 attempt 1 INVALID: inject_fault.sh not executable (permission denied), fault never applied
+F1 A109-co2 stuck injected at sim 2026-10-21T08:30:05Z (wall UTC 2026-10-11 10:14:58+00)
+F1 cleared at sim 2026-10-21T09:11:30Z
+2026-10-21T08:30:05 NORMAL 2 CO2 832 → reactive level 1; planner expects 876 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:35:06 NORMAL 2 CO2 861 → reactive level 1; planner expects 876 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:40:06 NORMAL 2 CO2 861 → reactive level 1; planner expects 877 ppm in 30 min → pre-ventilate 2
+2026-10-21T08:45:06 DEGRADED 2 CO2 frozen → estimate from occupancy 102 → level 2
+2026-10-21T08:50:05 DEGRADED 2 CO2 frozen → estimate from occupancy 102 → level 2
+2026-10-21T08:55:05 DEGRADED 2 CO2 frozen → estimate from occupancy 102 → level 2
+2026-10-21T09:00:05 DEGRADED 2 CO2 frozen → estimate from occupancy 102 → level 2
+2026-10-21T09:05:05 DEGRADED 2 CO2 frozen → estimate from occupancy 102 → level 2
+2026-10-21T09:10:06 DEGRADED 2 CO2 frozen → estimate from occupancy 102 → level 2
+F1 RESULT: frozen at 08:30:05, last NORMAL 08:40:06 (frozen 861 ppm), first DEGRADED 08:45:06 -> detected after ~15 sim-min (NFR-05 <=10: FAIL, predicted 14-20). Vent stayed 2 throughout (occupancy fallback, 102 persons).
+F3a control killed at wall UTC 2026-10-11 10:18:05+00
+F3a control started at wall UTC 2026-10-11 10:18:36+00
+-- decisions A109 after restart (wall recv_ts, sim_ts, state, vent):
+10:18:42 2026-10-21T09:11:54 NORMAL 2
+10:18:47 2026-10-21T09:16:54 NORMAL 2
+10:18:52 2026-10-21T09:21:54 NORMAL 2
+10:18:57 2026-10-21T09:26:54 NORMAL 2
+10:19:02 2026-10-21T09:31:54 NORMAL 2
+10:19:07 2026-10-21T09:36:54 NORMAL 2
+-- A109 vent actuator during the outage (state: count):
+[{"state":3.0,"n":3}]F3a RESULT: control down 10:18:05-10:18:36 (31 s wall = ~30 sim-min, no decisions), first decision 10:18:42 = 6 s after start (NFR-02 <=60 s: PASS). A109 vent actuator held its last state 3 during the outage.
+-- retained vent command A117 before the kill:
+{"actuator_id": "A117-vent", "level": "level0", "room": "A117", "kind": "vent", "target": 2.0, "reason": "CO2 787 → reactive level 0; planner expects 874 ppm in 30 min → pre-ventilate 2", "issued_by": "control", "sim_ts": "2026-10-21T13:48:53+00:00", "seq": 81, "ts": "2026-10-11T10:32:42.648+00:00"}
+now wall UTC 10:34:14
+F3b actuator-vent-a117 killed at wall UTC 2026-10-11 10:34:14+00
+F3b actuator-vent-a117 started at wall UTC 2026-10-11 10:34:34+00
+-- A117 vent actuator state after restart (wall, state, target):
+10:34:35 0.0 2.0
+10:34:36 0.501 2.0
+10:34:37 1.003 2.0
+10:34:38 1.504 2.0
+10:34:39 2.0 2.0
+10:34:49 2.0 2.0
+10:34:59 2.0 2.0
+10:35:09 2.0 2.0
+-- what control wanted for A117 after restart (vent: count):
+[{"vent":2,"n":13}]-- physics A117 now:
+sim 2026-10-21T16:43:24+00:00 vent_level 2.0 co2 825.9 occupants 103
+F3b attempt 1 INCONCLUSIVE: retained command was only ~112 s old at restart (< 120 s), actuator accepted it. Attempt 2 at factor 1 (real time).
+-- retained vent command A117 before the kill:
+{"actuator_id": "A117-vent", "level": "level0", "room": "A117", "kind": "vent", "target": 2.0, "reason": "CO2 523 → reactive level 0; planner expects 869 ppm in 30 min → pre-ventilate 2", "issued_by": "control", "sim_ts": "2026-10-21T13:40:07+00:00", "seq": 110, "ts": "2026-10-11T10:39:22.738+00:00"}
+now wall UTC 10:41:45
+F3b(2) actuator-vent-a117 restarted at wall UTC 2026-10-11 10:41:55+00 (factor 1)
+-- actuator log after restart:
+actuator-vent-a117-1  | 2026-10-11 10:41:57,047 INFO actuator: actuator A117-vent (vent in level0/A117) range [0.0,3.0] rate 0.5/s
+actuator-vent-a117-1  | 2026-10-11 10:41:57,052 INFO mqtt: connected to broker broker:1883 (Success)
+actuator-vent-a117-1  | 2026-10-11 10:41:57,053 WARNING actuator: REJECTED command: stale command (154s old) | {'actuator_id': 'A117-vent', 'level': 'level0', 'room': 'A117', 'kind': 'vent', 'target': 2.0, 'reason': 'CO2 523 → reactive level 0; planner expects 869 ppm in 30 min → pre-ventilate 2', 'issued_by': 'control', 'sim_ts': '2026-10-21T13:40:07+00:00', 'seq': 110, 'ts': '2026-10-11T10:39:22.738+00:00'}
+actuator-vent-a117-1  | 2026-10-11 10:41:57,055 INFO httpx: HTTP Request: POST http://buildsim:9090/api/equipment/bulk "HTTP/1.1 200 OK"
+actuator-vent-a117-1  | 2026-10-11 10:41:57,056 INFO httpx: HTTP Request: PUT http://buildsim:9090/api/actuators/A117-vent/state "HTTP/1.1 200 OK"
+actuator-vent-a117-1  | 2026-10-11 10:42:07,065 INFO httpx: HTTP Request: PUT http://buildsim:9090/api/actuators/A117-vent/state "HTTP/1.1 200 OK"
+actuator-vent-a117-1  | 2026-10-11 10:42:17,076 INFO httpx: HTTP Request: PUT http://buildsim:9090/api/actuators/A117-vent/state "HTTP/1.1 200 OK"
+actuator-vent-a117-1  | 2026-10-11 10:42:27,095 INFO httpx: HTTP Request: PUT http://buildsim:9090/api/actuators/A117-vent/state "HTTP/1.1 200 OK"
+-- A117 vent actuator state after restart (wall, state, target):
+10:41:57 0.0 0.0
+10:42:07 0.0 0.0
+10:42:17 0.0 0.0
+10:42:27 0.0 0.0
+-- what control wants for A117 (vent: count):
+[{"vent":2,"n":7}]F3b(2) RESULT: at factor 1 the retained command was 154 s old at restart -> actuator REJECTED it as stale and stayed at vent 0 while control kept deciding vent 2 (7 decisions, no re-send). Bug confirmed (predicted in architecture.md §9): NFR-02 FAIL for actuator restarts in real-time operation; hidden at factor 60 because targets change every few wall-seconds. Self-heals only via SAFETY (target change) after CO2 > 1200 ppm.
+F6 at wall UTC 2026-10-11T11:18:06+00:00: 3 invalid commands to A109-vent
+actuator-vent-a109-1  | 2026-10-11 11:18:06,967 WARNING actuator: REJECTED command: unauthorised issuer 'attacker' | {'actuator_id': 'A109-vent', 'level': 'level0', 'room': 'A109', 'kind': 'vent', 'target': 3, 'reason': 'F6', 'issued_by': 'attacker', 'sim_ts': 'x', 'seq': 1, 'ts': '2026-10-11T11:18:06+00:00'}
+actuator-vent-a109-1  | 2026-10-11 11:18:07,327 WARNING actuator: REJECTED command: target 99.0 outside [0.0, 3.0] | {'actuator_id': 'A109-vent', 'level': 'level0', 'room': 'A109', 'kind': 'vent', 'target': 99, 'reason': 'F6', 'issued_by': 'control', 'sim_ts': 'x', 'seq': 2, 'ts': '2026-10-11T11:18:06+00:00'}
+actuator-vent-a109-1  | 2026-10-11 11:18:07,589 WARNING actuator: REJECTED command: stale command (11888s old) | {'actuator_id': 'A109-vent', 'level': 'level0', 'room': 'A109', 'kind': 'vent', 'target': 3, 'reason': 'F6', 'issued_by': 'control', 'sim_ts': 'x', 'seq': 3, 'ts': '2026-10-11T08:00:00+00:00'}
+F6 RESULT: 3/3 invalid commands rejected (unauthorised issuer, target 99 out of range, 11888 s stale). SAF-01 PASS. Caveat: validation, not authentication - a message spoofing issued_by=control with a valid target and fresh ts would be accepted (no MQTT auth, see architecture.md §9).

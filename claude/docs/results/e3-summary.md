@@ -91,6 +91,12 @@ investigated; R4/R5 have complete data.
 
 - One simulated day, one run per variant; sensor noise and the clock jump at the start add some variance.
 - occupancysim: every registered student attends, so the timetable forecast is an optimistic upper bound.
+- **Occupancy is not sensed realistically:** CO₂ and temperature go through a sensor model (noise, lag),
+  but the head count is exact. The persistence forecast and the DEGRADED fallback therefore work from
+  perfect occupancy data.
+- **The planner's rollout uses the simulation's own physics model** (same equations, same parameters, same
+  outdoor-temperature formula) — no model–plant mismatch.
+- Together: the planner results (−98 % / −100 %, comfort 85 %) are **upper bounds** for a real building.
 - Sensor readings, not ground truth: a reading is every 2 sim-min with noise σ = 15 ppm.
 - The outdoor-temperature daily term is still inverted (coldest at 15:00, §9) — all runs share it.
 
