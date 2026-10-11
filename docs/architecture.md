@@ -462,7 +462,7 @@ logs.
 
 | Variable | Used by | Value |
 |---|---|---|
-| `COURSE_REPO` | Compose build | `../../D7065E` |
+| `COURSE_REPO` | Compose build | `../D7065E` |
 | `OCCUPANCY_LEVELS`, `OCCUPANCY_FACTOR`, `OCCUPANCY_START` | `occupancysim` | `level0`, `60`, `07:30` |
 | `BUILDSIM_URL` | most services | `http://buildsim:9090` |
 | `OCCUPANCY_URL` | `seed`, `physics`, `occupancy_counter`, `control`, `planner` | `http://occupancysim:8081` |
