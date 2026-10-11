@@ -13,9 +13,10 @@ import json
 import logging
 import os
 import threading
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import duckdb
 
@@ -31,8 +32,23 @@ class Storage:
             (self.root / sub).mkdir(parents=True, exist_ok=True)
         self._files: dict[Path, Any] = {}
         self._lock = threading.Lock()
+        self._query_lock = threading.Lock()
         self.rows = {k: 0 for k in KINDS}
         self.rejected = 0
+
+    @contextmanager
+    def _connection(self) -> Iterator[duckdb.DuckDBPyConnection]:
+        """Serialize scans so concurrent requests cannot multiply reader memory.
+
+        Ingestion keeps using its own lock. The memory limit applies to DuckDB's
+        buffers, not to total process memory.
+        """
+        with self._query_lock:
+            con = duckdb.connect(config={"threads": 1, "memory_limit": "256MB"})
+            try:
+                yield con
+            finally:
+                con.close()
 
     # -- bronze --------------------------------------------------------------------
     def append(self, kind: str, topic: str, payload: dict[str, Any]) -> None:
@@ -58,21 +74,20 @@ class Storage:
         with self._lock:
             for f in self._files.values():
                 f.flush()
-        con = duckdb.connect()
-        for kind in KINDS:
-            glob = str(self.root / "bronze" / "*" / f"{kind}.jsonl")
-            target = self.root / "silver" / f"{kind}.parquet"
-            try:
-                n = con.execute(f"SELECT count(*) FROM read_json_auto('{glob}', union_by_name=true)").fetchone()[0]
-                if n == 0:
-                    continue
-                con.execute(f"COPY (SELECT DISTINCT * FROM read_json_auto('{glob}', union_by_name=true) ORDER BY recv_ts) "
-                            f"TO '{target}' (FORMAT PARQUET)")
-                out[kind] = int(n)
-            except duckdb.Error as e:
-                if "No files found" not in str(e):
-                    log.warning("compact %s failed: %s", kind, e)
-        con.close()
+        with self._connection() as con:
+            for kind in KINDS:
+                glob = str(self.root / "bronze" / "*" / f"{kind}.jsonl")
+                target = self.root / "silver" / f"{kind}.parquet"
+                try:
+                    n = con.execute(f"SELECT count(*) FROM read_json_auto('{glob}', union_by_name=true)").fetchone()[0]
+                    if n == 0:
+                        continue
+                    con.execute(f"COPY (SELECT DISTINCT * FROM read_json_auto('{glob}', union_by_name=true) ORDER BY recv_ts) "
+                                f"TO '{target}' (FORMAT PARQUET)")
+                    out[kind] = int(n)
+                except duckdb.Error as e:
+                    if "No files found" not in str(e):
+                        log.warning("compact %s failed: %s", kind, e)
         return out
 
     # -- queries ------------------------------------------------------------------------
@@ -97,22 +112,20 @@ class Storage:
         else:
             anchor = "SELECT max(CAST(sim_ts AS TIMESTAMPTZ)) AS latest FROM r"
         params.append(minutes)
-        con = duckdb.connect()
         try:
-            con.execute("SET TimeZone = 'UTC'")      # naive timestamps in bronze are UTC, on every host
-            rows = con.execute(
-                f"""WITH r AS (SELECT * FROM read_json_auto('{glob}', union_by_name=true) WHERE {filt}),
-                         m AS ({anchor})
-                    SELECT sim_ts, ts, value, seq, quality FROM r, m
-                    WHERE CAST(sim_ts AS TIMESTAMPTZ) >= m.latest - INTERVAL (?) MINUTE
-                      AND CAST(sim_ts AS TIMESTAMPTZ) <= m.latest
-                    ORDER BY sim_ts""", params).fetchall()
+            with self._connection() as con:
+                con.execute("SET TimeZone = 'UTC'")      # naive timestamps in bronze are UTC, on every host
+                rows = con.execute(
+                    f"""WITH r AS (SELECT * FROM read_json_auto('{glob}', union_by_name=true) WHERE {filt}),
+                             m AS ({anchor})
+                        SELECT sim_ts, ts, value, seq, quality FROM r, m
+                        WHERE CAST(sim_ts AS TIMESTAMPTZ) >= m.latest - INTERVAL (?) MINUTE
+                          AND CAST(sim_ts AS TIMESTAMPTZ) <= m.latest
+                        ORDER BY sim_ts""", params).fetchall()
         except duckdb.Error as e:
             if "No files found" in str(e):
                 return []
             raise
-        finally:
-            con.close()
         return [{"sim_ts": r[0], "ts": r[1], "value": r[2], "seq": r[3], "quality": r[4]} for r in rows]
 
     def query(self, sql: str) -> list[dict[str, Any]]:
@@ -120,8 +133,7 @@ class Storage:
         Tables are exposed as views: sensor, actuator, plan, decision, health (bronze, live)."""
         if not sql.strip().lower().startswith(("select", "with")):
             raise ValueError("read-only endpoint: only SELECT/WITH queries are allowed")
-        con = duckdb.connect()
-        try:
+        with self._connection() as con:
             for kind in KINDS:
                 glob = str(self.root / "bronze" / "*" / f"{kind}.jsonl")
                 if list((self.root / "bronze").glob(f"*/{kind}.jsonl")):
@@ -129,5 +141,3 @@ class Storage:
             cur = con.execute(sql)
             cols = [d[0] for d in cur.description]
             return [dict(zip(cols, row)) for row in cur.fetchmany(10000)]
-        finally:
-            con.close()
