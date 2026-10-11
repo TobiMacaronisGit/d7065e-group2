@@ -1,9 +1,11 @@
-% Course report, aligned with implementation 66e0805 and checked-in evaluation evidence.
+% D7065E final report, Group 2. Compile with pdflatex; images live next to this file.
 \documentclass[11pt,a4paper]{article}
 \usepackage[margin=25mm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern,tabularx,longtable,booktabs,xcolor,amsmath,graphicx,fancyhdr,pgfplots,tikz}
 \usepackage{float}
+% Red placeholders: every \fillin{...} must be replaced before submission.
+\newcommand{\fillin}[1]{\textcolor{red}{[#1]}}
 \usepackage[hidelinks]{hyperref}
 % Images live next to this file (report/). Upload the whole folder to Overleaf.
 \graphicspath{{./}}
@@ -34,7 +36,7 @@
   act/.style={draw, thick, fill=blue!8, minimum width=2.1cm, minimum height=0.7cm, font=\small\bfseries, align=center},
   note/.style={draw, fill=yellow!15, font=\footnotesize, align=left, inner sep=3pt},
   phase/.style={font=\footnotesize\bfseries, text=darkgray, fill=white, inner sep=1pt, anchor=west},
-  lbl/.style={above, font=\footnotesize, fill=white, inner sep=1pt},
+  lbl/.style={above, font=\footnotesize, fill=white, inner sep=1pt, align=center},
   service/.style={act,fill=serviceblue},
   infrastructure/.style={act,fill=infrapurple},
   device/.style={act,fill=devicegreen},
@@ -61,26 +63,23 @@
 \tableofcontents
 \newpage
 \section{Summary}
-The system autonomously regulates ventilation and heating in five simulated rooms on level 0 of the A-house. Occupants generate CO\textsubscript{2}; fresh air removes it but also creates a heating demand. Separate sensor, controller and actuator processes close this feedback loop through MQTT and BuildSim. A reactive controller provides threshold-based responses, while an advisory planner uses lecture bookings to anticipate occupancy over 30 simulated minutes. The planner reads observed history, rather than physical ground truth, and its suggestions can raise the reactive ventilation request. JSONL/Parquet storage supports history, audit and evaluation; BuildSim overlays and Grafana expose the resulting conditions and decisions.
+The system autonomously regulates ventilation and heating in five simulated rooms on level 0 of the A-house. Occupants generate CO\textsubscript{2}; fresh air removes it but also creates a heating demand. Separate sensor, controller and actuator processes close this feedback loop through MQTT and BuildSim. A reactive controller provides threshold-based responses, while an advisory planner uses lecture bookings to anticipate occupancy over 30 simulated minutes. The planner reads observed history, rather than physical ground truth, and its suggestions can raise the reactive ventilation request. JSONL/Parquet storage supports history, audit and evaluation; BuildSim overlays and Grafana expose the resulting conditions and decisions. The guiding principle is that the reactive loop always keeps rooms safe on its own, while forecasting may only add ventilation or preheating, never remove it.
 
-The current implementation adds 18 $^\circ$C mechanical supply air, 75\% heat recovery and separate air-handling-unit (AHU) energy accounting. Recorded final-configuration runs show a concrete trade-off: timetable planning reduced occupied lecture-room CO\textsubscript{2} exceedances from 122 to zero simulated minutes, increased lecture-room comfort from 70.2\% to 84.7\%, and raised all-room radiator-plus-AHU energy from 259.5 to 282.6 kWh. These are existing repository results from one simulated weekday, not new experiments performed for this revision. The 90\% comfort requirement remains unmet; the fika room still has exceedances, and the fixed-schedule energy baseline has not been evaluated.
+The current implementation adds 18 $^\circ$C mechanical supply air, 75\% heat recovery and separate air-handling-unit (AHU) energy accounting. Recorded final-configuration runs show a concrete trade-off: timetable planning reduced occupied lecture-room CO\textsubscript{2} exceedances from 122 to zero simulated minutes, increased lecture-room comfort from 70.2\% to 84.7\%, and raised all-room radiator-plus-AHU energy from 259.5 to 282.6 kWh. These results come from one simulated weekday with one run per variant. The 90\% comfort requirement remains unmet; the fika room still has exceedances, and the fixed-schedule energy baseline has not been evaluated.
 
 \noindent\begin{tabularx}{\linewidth}{lX}\toprule Field & Value\\\midrule
 Project & CO\textsubscript{2}-driven ventilation with thermal trade-off\\
 Team & Group 2: Tobias Hanke; Evangelos Vasilaras\\
 Scope & A109, A117, A110, A323 and A113C on level 0\\
 Repository & \url{https://github.com/TobiMacaronisGit/d7065e-group2}\\
-Implementation & \texttt{66e0805}; report revised 11 October 2026\\
-Evidence & \protect\path{docs/results/faults.txt}, \protect\path{e3-results.md}, \protect\path{e3-summary.md} and \protect\path{train.txt} in the same results directory\\\bottomrule
+Version & Branch \texttt{main} at submission, 12 October 2026\\
+Evidence & \protect\path{docs/results/}: \protect\path{unit-tests.txt}, \protect\path{e2e.txt}, \protect\path{faults.txt}, \protect\path{e3-results.md}, \protect\path{e3-summary.md}, \protect\path{train.txt}\\\bottomrule
 \end{tabularx}
 
 \paragraph{Changes since the proposal.}
 The proposed four-to-six-room demonstration now uses five named rooms with explicit lecture/fika/office roles. Reactive control and planning are separate processes, allowing the reactive path to continue when history or planning is unavailable. MQTT implements observation and command distribution; JSONL, Parquet and DuckDB provide inspectable history without a separate database server.
 
 The latest changes also respond to evidence. A linear occupancy model lost to persistence on a held-out date and was kept as an evaluation artifact rather than deployed. Lecture bookings now provide the primary forecast, with persistence used when no bookings or trained model are available. Replayed experiments exposed history contamination; the planner now bounds queries by its current simulated time and recent wall-clock receipt time. Initial thermal results showed zero occupied comfort, prompting the explicit supply-air, heat-recovery and radiator changes above. These refinements improve the demonstration. Newly recorded fault tests confirm late frozen-sensor detection and a failed actuator restart; pipeline scans now use bounded DuckDB buffers and serialized query execution. Recovery guarantees and model calibration remain open.
-
-\paragraph{Revision scope and branch provenance.}
-This revision checks the fetched GitHub main branch at \texttt{66e0805}, including the pipeline limiter and recorded F1/F3/F6 tests. Additional plots and the 18--24 $^\circ$C descriptive metric come from \protect\path{origin/tobias}, commit \texttt{fbb5552}, which was not merged into main at review time. These additions do not change the FR-02 acceptance band or constitute new simulation runs.
 
 \section{Use case and building context}
 \paragraph{Purpose and responsibilities.}
@@ -104,29 +103,29 @@ Physics reads occupancy and reached actuator states from BuildSim. Sensors sampl
 
 \section{Requirements}
 Requirements retain the repository IDs and distinguish simulated time (sim-min) from real elapsed time (s wall). Table~\ref{tab:req} traces the acceptance criteria to the architecture and verification plan. A configuration setting is not treated as a measured guarantee.
-{\small\begin{longtable}{p{19mm}p{83mm}p{42mm}}
-\caption{Requirements and traceability, from \protect\path{docs/requirements.md}.}\label{tab:req}\\
-\toprule ID & Acceptance criterion & Design / verification\\\midrule\endfirsthead
-\toprule ID & Acceptance criterion & Design / verification\\\midrule\endhead
-FR-01 & Occupied-room CO\textsubscript{2} returns below 1000 ppm within 10 sim-min after exceeding it. & Reactive rules, ventilation; S1.\\
-FR-02 & At least 90\% of occupied sim-min are within 20--24 $^\circ$C over a weekday. & Setpoints and physics; S1.\\
-FR-03 & Within 15 sim-min of emptying, ventilation reaches its configured minimum target and heating target is 17 $^\circ$C. & Setback rules; S1.\\
-FR-04 & Forecasting reduces occupied CO\textsubscript{2} exceedance minutes by at least 50\% relative to reactive-only on the same day/seed. & Planner; E3, E5.\\
-FR-05 & Decisions contain reasons and inputs and can be retrieved from history. & Decision schema and pipeline; audit inspection.\\
-NFR-01 & Median per-room decision interval is at most 60 s wall under five-room load. & Five-second control loop; E4.\\
-NFR-02 & After a process crash/restart, correct commands resume within 60 s wall without unsafe intervening commands. & Process isolation, reconnect/restart; F3/F4.\\
-NFR-03 & No actuator target changes more than once per 5 sim-min, except SAFETY. & Hysteresis/dwell; E2.\\
-NFR-04 & Weekday modelled heating energy is no greater than a fixed-schedule baseline. & Occupancy setback; E1.\\
-NFR-05 & Frozen CO\textsubscript{2} is detected within 10 sim-min; control continues from occupancy in DEGRADED mode. & Quality classifier; F1/F2.\\
-NFR-06 & Following a BuildSim restart, devices re-register and readings resume within 60 s wall without reseeding. & Device self-registration; F5.\\
-NFR-07 & A 60-s-wall pipeline outage loses no readings. & QoS 1 and persistent consumer session; F3/F4.\\
-REG-01 & Every ventilation command is at least the configured minimum, in every mode. & Final clamp; rule review.\\
-SAF-01 & Reject commands with an incorrect issuer, out-of-range target or wall age over 120 s. & Actuator validation; F6.\\\bottomrule
+{\small\begin{longtable}{p{15mm}p{13mm}p{77mm}p{37mm}}
+\caption{Requirements and traceability, from \protect\path{docs/requirements.md}. Type: F functional, NF non-functional, R regulatory, S safety. U1 is the unit-test suite (Section~\ref{sec:tests}).}\label{tab:req}\\
+\toprule ID & Type, prio & Acceptance criterion & Design / verification\\\midrule\endfirsthead
+\toprule ID & Type, prio & Acceptance criterion & Design / verification\\\midrule\endhead
+FR-01 & F, Must & Occupied-room CO\textsubscript{2} returns below 1000 ppm within 10 sim-min after exceeding it. & Reactive rules; U1, S1.\\
+FR-02 & F, Must & At least 90\% of occupied sim-min are within 20--24 $^\circ$C over a weekday. & Setpoints, physics; S1.\\
+FR-03 & F, Must & Within 15 sim-min of emptying, ventilation reaches its configured minimum target and heating target is 17 $^\circ$C. & Setback rules; U1, S1.\\
+FR-04 & F, Should & Forecasting reduces occupied CO\textsubscript{2} exceedance minutes by at least 50\% relative to reactive-only on the same day/seed. & Planner; U1, E3, E5.\\
+FR-05 & F, Should & Decisions contain reasons and inputs and can be retrieved from history. & Decision schema, pipeline; U1, audit.\\
+NFR-01 & NF, Must & Median per-room decision interval is at most 60 s wall under five-room load. & Five-second control loop; E4.\\
+NFR-02 & NF, Must & After a process crash/restart, correct commands resume within 60 s wall without unsafe intervening commands. & Process isolation, reconnect/restart; F3/F4.\\
+NFR-03 & NF, Should & No actuator target changes more than once per 5 sim-min, except SAFETY. & Hysteresis/dwell; U1, E2.\\
+NFR-04 & NF, Should & Weekday modelled heating energy is no greater than a fixed-schedule baseline. & Occupancy setback; E1.\\
+NFR-05 & NF, Must & Frozen CO\textsubscript{2} is detected within 10 sim-min; control continues from occupancy in DEGRADED mode. & Quality classifier; U1, F1/F2.\\
+NFR-06 & NF, Should & Following a BuildSim restart, devices re-register and readings resume within 60 s wall without reseeding. & Device self-registration; F5.\\
+NFR-07 & NF, Should & A 60-s-wall pipeline outage loses no readings. & QoS 1 and persistent consumer session; F3/F4.\\
+REG-01 & R, Must & Every ventilation command is at least the configured minimum, in every mode. & Final clamp; U1, rule review.\\
+SAF-01 & S, Must & Reject commands with an incorrect issuer, out-of-range target or wall age over 120 s. & Actuator validation; U1, F6.\\\bottomrule
 \end{longtable}}
 REG-01 names a configurable invariant; the minimum is currently zero, so it does not establish compliance with an external ventilation standard. SAF-01 checks a literal issuer string, not authenticated identity. Section~\ref{sec:results} reports evidence and gaps against these criteria.
 
 \paragraph{Temperature target and guidance.}
-FR-02's 20--24 $^\circ$C band is a project comfort target, not an established legal requirement. The newer branch additionally reports time within 18--24 $^\circ$C. Swedish public-health guidance HSLF-FS 2024:10 gives operative-temperature guideline values of 18 $^\circ$C minimum (20 $^\circ$C for sensitive groups) and 24 $^\circ$C maximum in autumn, winter and spring. Operative temperature includes surrounding-surface radiation; this project models air temperature only. The additional metric therefore provides context, not a regulatory-compliance finding, and does not replace FR-02.
+FR-02's 20--24 $^\circ$C band is a project comfort target, not an established legal requirement. The evaluation additionally reports time within 18--24 $^\circ$C. Swedish public-health guidance HSLF-FS 2024:10 gives operative-temperature guideline values of 18 $^\circ$C minimum (20 $^\circ$C for sensitive groups) and 24 $^\circ$C maximum in autumn, winter and spring. Operative temperature includes surrounding-surface radiation; this project models air temperature only. The additional metric therefore provides context, not a regulatory-compliance finding, and does not replace FR-02.
 Source: \href{https://www.folkhalsomyndigheten.se/contentassets/1c28701a4c8f49cabce85e3bb65695dc/hslf-fs-2024-10.pdf}{Folkh\"alsomyndigheten, HSLF-FS 2024:10, Tables 1--3}.
 
 \section{Architecture}
@@ -142,13 +141,13 @@ Figure~\ref{fig:context} incorporates the updated context view in \protect\path{
  {Ventilation and\\climate control\\\normalfont Five rooms on level 0\\Physics, devices, control,\\planning and history};
 \node[external,text width=3cm,minimum height=2.2cm] (bs) at (12.6,-3.2)
  {BuildSim\\\normalfont Shared occupancy,\\values, reached states;\\browser 3D view};
-\draw[msg] (people.south) -- node[lbl,xshift=0.9cm]{presence} (occ.north);
-\draw[ret] (occ.north east) -- (3.45,-1.6) -- node[lbl]{clock + bookings} (5.03,-1.6) -- (sys.north west);
-\draw[ret] (bs.west) -- node[lbl]{room inputs} (sys.east);
-\draw[msg] (sys.south east) -- (8,-4.9) -- node[lbl]{values / states / view} (11.8,-4.9) -- (bs.south west);
-\draw[msg] (occ.south) -- (1.8,-5.65) -- node[lbl]{occupancy + entities} (13.4,-5.65) -- (bs.south east);
-\draw[msg] (sys.north) -- (7.2,-1.1) -- node[lbl]{history / decisions} (12.6,-1.1) -- (manager.south);
-\draw[ret] (bs.east) -- (14.55,-3.2) -- (14.55,0.9) -- node[lbl]{3D view} (12.6,0.9) -- (manager.north);
+\draw[msg] (people.south) -- node[lbl,xshift=-0.8cm]{presence} (occ.north);
+\draw[ret] (occ.north east) -- (3.45,-1.6) -- node[lbl]{clock + bookings\\{}[REST]} (5.03,-1.6) -- (sys.north west);
+\draw[ret] (bs.west) -- node[lbl]{room inputs\\{}[REST]} (sys.east);
+\draw[msg] (sys.south east) -- (8,-4.9) -- node[lbl]{values / states / view [REST]} (11.8,-4.9) -- (bs.south west);
+\draw[msg] (occ.south) -- (1.8,-5.65) -- node[lbl]{occupancy + entities [REST]} (13.4,-5.65) -- (bs.south east);
+\draw[msg] (sys.north) -- (7.2,-1.1) -- node[lbl]{history / decisions [HTTP]} (12.6,-1.1) -- (manager.south);
+\draw[ret] (bs.east) -- (14.55,-3.2) -- (14.55,0.9) -- node[lbl]{3D view [WebSocket]} (12.6,0.9) -- (manager.north);
 \node[note,text width=13.6cm] at (7.2,-6.9)
  {\textbf{Scope and boundary.} A109/A117: lectures; A110: fika; A323/A113C: offices.\\
  No manual override. Shared lab host/network; truth separation is a code convention.\\
@@ -156,7 +155,7 @@ Figure~\ref{fig:context} incorporates the updated context view in \protect\path{
  Manager views include health; BuildSim supplies 3D conditions and alerts. Clock factor: 60.};
 \end{tikzpicture}
 \diagramlegend
-\caption{System context: all seven information flows from \texttt{context.d2}. Solid arrows show messages/writes; dashed arrows show read or browser responses. Room inputs are occupancy and reached actuator states. Writes include sensor values, reached states, room layers and alerts.}\label{fig:context}
+\caption{System context: all seven information flows from \texttt{context.d2}. Solid arrows show messages/writes; dashed arrows show read or browser responses. Room inputs are occupancy and reached actuator states. Writes include sensor values, reached states, room layers and alerts. Protocols are given in brackets; the presence edge is simulated by occupancysim, not a network call.}\label{fig:context}
 \end{figure}
 
 \subsection{Container diagram (C4 Level 2)}
@@ -171,22 +170,22 @@ Figures~\ref{fig:containers} and~\ref{fig:containers-support} incorporate \prote
 \node[infrastructure,text width=3cm] (mq) at (7.35,-6.5) {broker\\\normalfont Mosquitto\\MQTT 1883; QoS 1\\Retained targets};
 \node[device,text width=3cm] (act) at (1.95,-9.4) {actuator-* $\times10$\\\normalfont Python; vent / heat\\Validate and move};
 \node[service,text width=3cm] (ctl) at (12.75,-9.4) {control\\\normalfont Python; 8091\\Every 5 s wall};
-\draw[ret] (bs.west) -- node[lbl]{room inputs} (phy.east);
-\draw[msg] (occ.west) -- node[lbl]{occupancy} (bs.east);
-\draw[ret] (phy.south) -- node[lbl,xshift=1cm]{room truth} (sen.north);
-\draw[ret] (bs.south east) -- node[lbl]{persons} (cnt.north west);
-\draw[msg] (sen.east) -- node[lbl]{observations} (6.75,-3.5) -- (mq.north west);
-\draw[msg] (cnt.west) -- node[lbl]{head counts} (7.95,-3.5) -- (mq.north east);
-\draw[msg] (mq.east) -- node[lbl]{inputs + plans} (12.75,-6.5) -- (ctl.north);
-\draw[msg] (ctl.north west) -- (11,-8.1) -- node[lbl]{cmd / decision} (8.1,-8.1) -- (mq.south -| 8.1,0);
-\draw[msg] (mq.west) -- node[lbl]{commands} (1.95,-6.5) -- (act.north);
-\draw[msg] (act.east) -- (4.15,-9.4) -- (4.15,-8.1) -- node[lbl]{state + fault} (6.7,-8.1) -- (mq.south -| 6.7,0);
-\draw[msg] (act.west) -- (-0.25,-9.4) -- (-0.25,2) -- node[lbl]{reached states} (7.35,2) -- (bs.north);
-\draw[msg] (sen.west) -- (0.1,-3.5) -- (0.1,1.1) -- node[lbl]{display values} (6.7,1.1) -- (bs.north west);
-\draw[ret] (occ.north) -- (12.75,2.9) -- node[lbl]{simulated clock} (1.95,2.9) -- (phy.north);
+\draw[ret] (bs.west) -- node[lbl]{room inputs\\{}[REST]} (phy.east);
+\draw[msg] (occ.west) -- node[lbl]{occupancy\\{}[REST]} (bs.east);
+\draw[ret] (phy.south) -- node[lbl,xshift=1cm]{room truth [REST]} (sen.north);
+\draw[ret] (bs.south east) -- node[lbl]{persons [REST]} (cnt.north west);
+\draw[msg] (sen.east) -- node[lbl]{observations\\{}[MQTT]} (6.75,-3.5) -- (mq.north west);
+\draw[msg] (cnt.west) -- node[lbl]{head counts\\{}[MQTT]} (7.95,-3.5) -- (mq.north east);
+\draw[msg] (mq.east) -- node[lbl]{inputs + plans\\{}[MQTT]} (12.75,-6.5) -- (ctl.north);
+\draw[msg] (ctl.north west) -- (11,-8.1) -- node[lbl]{cmd / decision [MQTT]} (8.1,-8.1) -- (mq.south -| 8.1,0);
+\draw[msg] (mq.west) -- node[lbl]{commands\\{}[MQTT]} (1.95,-6.5) -- (act.north);
+\draw[msg] (act.east) -- (4.15,-9.4) -- (4.15,-8.1) -- node[lbl,below]{state + fault [MQTT]} (6.7,-8.1) -- (mq.south -| 6.7,0);
+\draw[msg] (act.west) -- (-0.25,-9.4) -- (-0.25,2) -- node[lbl]{reached states [REST]} (7.35,2) -- (bs.north);
+\draw[msg] (sen.west) -- (0.1,-3.5) -- (0.1,1.1) -- node[lbl]{display values [REST]} (6.7,1.1) -- (bs.north west);
+\draw[ret] (occ.north) -- (12.75,2.9) -- node[lbl]{simulated clock [REST]} (1.95,2.9) -- (phy.north);
 \end{tikzpicture}
 \diagramlegend
-\caption{Container view, panel A: the live feedback loop. Numbers are HTTP host ports except broker's MQTT port. Each device group represents ten independent Compose services. Panel B completes the same inventory. Short labels retain the \texttt{container.d2} contracts; state reports carry target, motion and fault.}\label{fig:containers}
+\caption{Container view, panel A: the live feedback loop. Numbers are HTTP host ports except broker's MQTT port. Each device group represents ten independent Compose services. Panel B completes the same inventory. Brackets give the protocol on each edge; all REST calls are HTTP/JSON. State reports carry target, motion and fault.}\label{fig:containers}
 \end{figure}
 
 \begin{figure}[H]\centering
@@ -199,15 +198,15 @@ Figures~\ref{fig:containers} and~\ref{fig:containers-support} incorporate \prote
 \node[external,text width=3cm] (occ) at (12.8,-6) {occupancysim\\\normalfont Same as panel A};
 \node[external,text width=3cm] (bs) at (7.3,-9) {BuildSim\\\normalfont Same as panel A};
 \node[service,text width=3cm] (seed) at (12.8,-9) {seed\\\normalfont One-shot setup\\No published port};
-\draw[msg] (mq.south west) -- node[lbl]{archive events} (pipe.north east);
-\draw[ret] (pipe.east) -- node[lbl]{observed history} (plan.west);
-\draw[msg] (plan.north west) -- node[lbl]{retained Plan} (mq.south east);
-\draw[msg] (mq.west) -- node[lbl]{live events} (-0.1,0) -- (-0.1,-6) -- (view.west);
-\draw[ret] (pipe.south east) -- node[lbl]{query JSON} (graf.north west);
-\draw[ret] (occ.north) -- node[lbl,xshift=-1.2cm]{clock + bookings} (plan.south);
-\draw[msg] (view.south east) -- node[lbl]{layers + alerts} (bs.north west);
-\draw[msg] (seed.west) -- node[lbl]{register} (bs.east);
-\draw[msg] (seed.north) -- node[lbl,xshift=1cm]{room roles} (occ.south);
+\draw[msg] (mq.south west) -- node[lbl]{archive events\\{}[MQTT]} (pipe.north east);
+\draw[ret] (pipe.east) -- node[lbl]{observed history [REST]} (plan.west);
+\draw[msg] (plan.north west) -- node[lbl]{retained Plan\\{}[MQTT]} (mq.south east);
+\draw[msg] (mq.west) -- node[lbl]{live events [MQTT]} (-0.1,0) -- (-0.1,-6) -- (view.west);
+\draw[ret] (pipe.south east) -- node[lbl]{query JSON\\{}[REST]} (graf.north west);
+\draw[ret] (occ.north) -- node[lbl,xshift=-1.2cm]{clock + bookings [REST]} (plan.south);
+\draw[msg] (view.south east) -- node[lbl]{layers + alerts\\{}[REST]} (bs.north west);
+\draw[msg] (seed.west) -- node[lbl]{register\\{}[REST]} (bs.east);
+\draw[msg] (seed.north) -- node[lbl,xshift=1cm]{room roles [REST]} (occ.south);
 \node[note,text width=13.6cm] at (7.3,-11)
  {\textbf{Compose inventory across panels A and B:} 10 sensors + 10 actuators + 10 shared\\
  containers = 30 continuing containers, plus one-shot seed. Repeated boxes are references.\\
@@ -248,17 +247,51 @@ The control process is the most useful internal view because it owns precedence 
 \end{scope}
 \node[phase] at (0.2,-6.7) {control container [Python]};
 \end{tikzpicture}
-\caption{Components within control, checked against \protect\path{control/main.py} and \protect\path{control/rules.py}; there is no component D2 source. Boxes are logical responsibilities: quality and constraints are stages inside RoomController. Configuration and SimClock are logical inputs; general range and drift detection remain absent.}\label{fig:components}
+\caption{Components within control (\protect\path{control/main.py}, \protect\path{control/rules.py}). Boxes are logical responsibilities: quality and constraints are stages inside RoomController. Configuration and SimClock are logical inputs; general range and drift detection remain absent.}\label{fig:components}
 \end{figure}
 
 \subsection{Design decisions and alternatives}
-{\small\begin{longtable}{p{39mm}p{45mm}p{60mm}}\toprule Choice & Alternative & Reason and cost\\\midrule\endhead
-Separate reactive control and advisory planner & One learned controller or joint optimiser & Threshold precedence remains inspectable and history failure does not stop reactive control; no joint optimum is obtained.\\
-MQTT commands/observations; REST queries & REST polling for all exchanges & Fan-out and retained latest targets simplify consumers; broker availability, duplication and stale retained values require care.\\
-One process per simulated device & One aggregate device service & Enables isolated faults and crashes; twenty device containers increase resource use.\\
-JSONL + Parquet/DuckDB & Time-series database server & Inspectable raw evidence and portable offline analysis; scans and full compaction grow with history.\\
-Timetable forecasting with persistence fallback & Deploy the fitted linear model & Held-out linear MAE exceeded persistence at every horizon; bookings anticipate class arrivals but assume attendance.\\
-Well-mixed room model with explicit AHU heating & Fixed traces or detailed CFD & Actuation changes later observations and energy cost is visible; parameters remain uncalibrated and spatial effects are absent.\\\bottomrule\end{longtable}}
+The table links each decision to the requirements it serves.
+{\small\begin{longtable}{p{31mm}p{29mm}p{20mm}p{56mm}}\toprule
+Choice & Alternative & Serves & Reason and cost\\\midrule\endhead
+Python 3.12 for all project services & Go (course recommendation; single static binary) &
+Team skills, schedule &
+Neither of us knew Go; learning a language and a distributed architecture in the same six weeks
+concentrates risk. NumPy and DuckDB are native in Python. Cost: larger images and RAM, about
+38\,MiB per device container and 1.3\,GiB for all 30 containers (measured, \protect\path{stability.txt}).\\
+Separate reactive control and advisory planner & One learned controller or joint optimiser &
+NFR-02, FR-04, FR-05 &
+Threshold precedence stays inspectable and a history or planner failure does not stop reactive
+control; no joint comfort/energy optimum.\\
+MQTT for observations and commands; REST for queries & REST polling for all exchanges; Kafka &
+NFR-02, NFR-07 &
+Four consumers need the same readings; the broker buffers short consumer outages and retains the
+latest targets. Cost: one shared broker, duplicates, and stale retained commands (F3b).\\
+One container per simulated device & One aggregate device service &
+NFR-02, NFR-05 &
+One fault domain per physical device: a frozen A109 CO\textsubscript{2} sensor (F1) does not
+affect its neighbours. Cost: twenty device containers.\\
+One shared occupancy counter & One counter per room &
+NFR-02 &
+BuildSim exposes occupancy as one collection, so one integration point suffices. Cost: a counter
+failure removes occupancy for all rooms; control falls back to DEGRADED/NO\_DATA.\\
+Sensors sample physics; BuildSim shows display values & Sensors read values from BuildSim &
+FR-01, NFR-05 &
+Ground truth stays separate from what control observes; sensors add lag, noise and faults, so
+observation error is measurable. Cost: an extra REST dependency between physics and sensors.\\
+JSONL + Parquet/DuckDB & Time-series database server (InfluxDB, TimescaleDB) &
+FR-04, FR-05 &
+Inspectable, replayable raw evidence for training, audit and evaluation without a database server.
+Cost: full scans grow with history (pipeline RSS 87\,$\to$\,116\,MiB).\\
+Timetable forecast, persistence fallback & Deploy the fitted linear model &
+FR-04 &
+Held-out linear MAE exceeded persistence at every horizon; bookings anticipate arrivals but
+assume full attendance.\\
+Well-mixed room model with explicit AHU heating & Fixed traces or detailed CFD &
+FR-01, FR-02, NFR-04 &
+Actuation changes later observations and energy cost is visible; parameters are uncalibrated
+and spatial effects are absent.\\\bottomrule
+\end{longtable}}
 
 \section{Interfaces and data contracts}
 \paragraph{Communication choices.}
@@ -349,7 +382,7 @@ It can return:
   "ts":"2026-10-10T08:00:00.000+00:00",
   "value":1042.0,"seq":381,"quality":"ok"}]
 \end{verbatim}}
-With \texttt{until}, the inclusive simulated window is $[t_{\mathrm{until}}-\mathrm{minutes},t_{\mathrm{until}}]$; \protect\path{max_age_s} additionally requires receipt time no earlier than wall-now minus that age. Without \texttt{until}, the endpoint retains its older latest-stored-reading anchor. Planner supplies both parameters, using $\mathrm{minutes}\times60/\max(f,10^{-3})+60$ wall seconds as the age limit. UTC query handling aligns the timestamp comparisons. This reduces cross-replay contamination but is not explicit run identity. The query API exposes bronze views named sensor, actuator, plan, decision and health. Its SELECT/WITH prefix check is not a complete SQL security sandbox. Manual-override status codes described in the worked example are not assumed to exist in this implementation.
+With \texttt{until}, the inclusive simulated window is $[t_{\mathrm{until}}-\mathrm{minutes},t_{\mathrm{until}}]$; \protect\path{max_age_s} additionally requires receipt time no earlier than wall-now minus that age. Without \texttt{until}, the endpoint retains its older latest-stored-reading anchor. Planner supplies both parameters, using $\mathrm{minutes}\times60/\max(f,10^{-3})+60$ wall seconds as the age limit. UTC query handling aligns the timestamp comparisons. This reduces cross-replay contamination but is not explicit run identity. The query API exposes bronze views named sensor, actuator, plan, decision and health. Its SELECT/WITH prefix check is not a complete SQL security sandbox.
 
 \section{Simulating the sensor values (the physical model)}
 \paragraph{Occupancy source and model choice.}
@@ -641,41 +674,50 @@ The implemented deployment is a single-host Docker Compose lab, with 30 continui
 \end{scope}
 \node[phase] at (0.2,-1.6) {Single Docker host};
 \end{tikzpicture}
-\caption{Single-host deployment, checked against Compose; there is no deployment D2 source. Grey lines indicate network membership; arrows show browser requests and pipeline storage writes. Type colours remain visible inside the mixed six-service group. Counts exclude the browser and host storage.}\label{fig:deployment}
+\caption{Single-host deployment, as defined in the Compose files. Grey lines indicate network membership; arrows show browser requests and pipeline storage writes. Type colours remain visible inside the mixed six-service group. Counts exclude the browser and host storage.}\label{fig:deployment}
 \end{figure}
 Project HTTP APIs use internal port 8000, exposed as 8090--8094 for physics, control, pipeline, planner and viewer respectively. BuildSim uses 9090, occupancysim 8081 and MQTT 1883. Grafana 12.3.0 and Infinity 4.1.1 are pinned. Device configuration and Compose generation reduce repeated definitions; restart policies and self-registration support recovery without establishing a measured recovery bound.
 
-Decision computation belongs in control/planner, while devices retain validation and rate-limited movement. A future physical deployment could place device adapters near equipment and history/planning on a server; that topology is not implemented here. Shared broker, clock authority, BuildSim and host failures can affect many rooms simultaneously. Existing stability snapshots report zero restarts across 30 containers over approximately 93 minutes and about 1.3 GiB total RAM, while pipeline RSS grew from 87 to 116 MiB. These snapshots are limited resource evidence, not scaling or outage tests.
+Decision computation belongs in control/planner, while devices retain validation and rate-limited movement. Shared broker, clock authority, BuildSim and host failures can affect many rooms simultaneously. Existing stability snapshots report zero restarts across 30 containers over approximately 93 minutes and about 1.3 GiB total RAM, while pipeline RSS grew from 87 to 116 MiB. These snapshots are limited resource evidence, not scaling or outage tests.
 
-\section{Test plan}
-This section records the repository verification plan and available evidence. No new application test or experiment was run while revising this document. Previously recorded live fault tests from 11 October are incorporated below. Existing test files specify useful checks; their presence alone is not a passing result. The current report uses checked-in run artifacts and source review.
+\paragraph{Edge and external compute.}
+Everything runs on one laptop, but in a real building the placement would follow the latency and survivability of each path. Sensors, actuators, broker, control and the pipeline belong on a local edge server, because the building must keep regulating itself when the internet connection is lost. Planner training and long-term analysis could run on external compute: they are slow, off the critical path, and a stale model is harmless. This is why the planner is advisory only. The architecture already tolerates the component that would be remote being unavailable, as reactive control continues without plans.
+
+\section{Test plan}\label{sec:tests}
+This section maps each requirement to its verification and the recorded evidence. Unit tests run without Docker; the end-to-end test, scenario runs and fault injections run against the full Compose stack. Rows without a recorded result remain planned work and are reported as such.
 {\small\begin{longtable}{p{19mm}p{63mm}p{24mm}p{37mm}}\toprule ID & Verification / metric & Requirement & Available status\\\midrule\endhead
+U1 & Unit tests (\texttt{make test}, 33 tests in 5 files): physics model, control rules and modes, actuator validation, pipeline storage/history, forecast and planner rollout. & FR-01, FR-03, FR-04, FR-05, NFR-03, NFR-05, REG-01, SAF-01 & 33 passed (e2e test deselected), 12 Oct 2026; \protect\path{docs/results/unit-tests.txt}.\\
 S1 & Occupied exceedance episodes, comfort share and empty-room setback over a weekday. & FR-01/02/03 & R8 recorded; comfort fails; full FR-01 episode and FR-03 timing not established.\\
 E3 & Same day/seed: reactive, persistence and timetable; exceedance minutes, peak, target changes, energy. & FR-04 & R6--R8 recorded; lecture-room reduction exceeds 50\%.\\
 E5 & Latest-date holdout; occupancy MAE at six horizons against persistence. & FR-04 & Recorded; fitted linear model loses.\\
-E1 & Fixed-schedule versus autonomous weekday energy, with comfort/air quality together. & NFR-04 & Not executed in supplied evidence.\\
+E1 & Fixed-schedule versus autonomous weekday energy, with comfort/air quality together. & NFR-04 & Not executed.\\
 E2 & Hysteresis on/off; changes per five sim-min. & NFR-03 & Not executed; source shows downward-only dwell.\\
 E4 & Increase rooms/rate; decision intervals, backlog, CPU/RAM and breaking point. & NFR-01 & Not executed; five-second configuration is not latency evidence.\\
 F1/F2 & Freeze/drift CO\textsubscript{2}; detect delay, fallback and concentration. & NFR-05 & F1 recorded: first DEGRADED decision about 15 sim-min after injection; ten-minute deadline fails. F2 drift test remains outstanding.\\
 F3/F4 & Process/pipeline/broker outage; correct-command recovery and event loss. & NFR-02/07 & F3a: decisions resume 6 s after control restart. F3b: stale retained target prevents actuator recovery. Broker/pipeline loss checks remain outstanding.\\
-F5 & BuildSim restart; re-registration without seed; time to readings. & NFR-06 & Not established by supplied run comparisons.\\
-F6/F8 & Wrong issuer/range/age commands and a lower conflicting plan. & SAF-01, FR-04 & F6 recorded: all three injected invalid commands rejected. Conflicting-plan precedence reviewed; F8 not newly executed.\\
+F5 & BuildSim restart; re-registration without seed; time to readings. & NFR-06 & Not executed.\\
+F6/F8 & Wrong issuer/range/age commands and a lower conflicting plan. & SAF-01, FR-04 & F6 recorded: all three injected invalid commands rejected. Conflicting-plan precedence covered by U1; F8 not executed live.\\
 Audit & Retrieve reasons/inputs and correlate decisions with commands. & FR-05 & Schema/storage implemented; universal coverage not measured.\\
 Rule review & Clamp after each mode and reject invalid commands. & REG-01, SAF-01 & Implemented invariant; minimum zero and unauthenticated issuer remain limits.\\
-E2E-1 & Command $\rightarrow$ actuator $\rightarrow$ BuildSim $\rightarrow$ physics observation. & Feedback loop & Checked-in \texttt{e2e.txt} reports one pass; not rerun.\\
-E2E-3 & Container restarts and memory at beginning/end. & Operational stability & Existing 93-min snapshots, zero restarts; not crash recovery.\\\bottomrule\end{longtable}}
-Unexecuted checks within these rows remain a plan. They are not required to be run merely to revise this report, and numerical acceptance claims are limited to the available artifacts.
+E2E-1 & Command $\rightarrow$ actuator $\rightarrow$ BuildSim $\rightarrow$ physics observation. & Feedback loop & Passed (\protect\path{docs/results/e2e.txt}).\\
+E2E-3 & Container restarts and memory at beginning/end. & Operational stability & 93-min run: zero restarts; not a crash-recovery test.\\\bottomrule\end{longtable}}
+Rows marked as not executed remain planned work; no acceptance claim is made for them.
 
 \subsection*{Recorded live fault tests, 11 October 2026}
-\textbf{F1 -- frozen CO\textsubscript{2}.} The first injection attempt was invalid because the script was not executable. In the valid attempt, A109's sensor was frozen at simulated 08:30:05. The last NORMAL decision was at 08:40:06; the first DEGRADED decision was at 08:45:06, approximately 15 simulated minutes after injection. Ventilation stayed at level 2 using an observed count of 102 people. Fallback operated, but the ten-minute NFR-05 deadline failed.
+\textbf{F1 -- frozen CO\textsubscript{2}.} The first injection attempt was invalid because the script was not executable. In the valid attempt, A109's sensor was frozen at simulated 08:30:05. The last NORMAL decision was at 08:40:06; the first DEGRADED decision was at 08:45:06, approximately 15 simulated minutes after injection. Ventilation stayed at level 2 using an observed count of 102 people. Fallback operated, but the ten-minute NFR-05 deadline failed (Figure~\ref{fig:f1}).
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.85\linewidth]{f1_frozen_sensor.png}
+\caption{F1: A109 CO\textsubscript{2} frozen at 08:30; control switches to DEGRADED and ventilates from the occupancy count.}\label{fig:f1}
+\end{figure}
 
 \textbf{F3a -- controller restart.} Control was stopped at wall UTC 10:18:05 and restarted at 10:18:36. The first recorded decision arrived at 10:18:42: six seconds after restart and 37 seconds after stopping. A109's actuator held level 3 during the outage. This supports prompt decision resumption for this case; it is not a complete proof of correct commands and safe intermediate behaviour across every device.
 
-\textbf{F3b -- actuator restart.} The first attempt accepted a retained command about 112 seconds old and did not exercise expiry. At real-time clock factor 1, the second attempt rejected a 154-second-old command. The A117 actuator stayed at level 0 while seven controller decisions continued to request level 2 without resending the unchanged target. This confirms the restart defect and fails the general NFR-02 recovery claim. No fix is recorded in the reviewed main branch.
+\textbf{F3b -- actuator restart.} The first attempt accepted a retained command about 112 seconds old and did not exercise expiry. At real-time clock factor 1, the second attempt rejected a 154-second-old command. The A117 actuator stayed at level 0 while seven controller decisions continued to request level 2 without resending the unchanged target. This confirms the restart defect and fails the general NFR-02 recovery claim. The defect is not yet fixed; Section~13 lists the mitigation.
 
 \textbf{F6 -- invalid commands.} Three commands were rejected and logged: foreign issuer, target 99 outside the allowed range, and a timestamp 11,888 seconds old. These cases support SAF-01 validation. They do not establish authentication: a fresh valid command spoofing the literal issuer remains a risk.
 
-Evidence: \protect\path{docs/results/faults.txt}. F2, F4, F5 and F7 remain unexecuted in the supplied live evidence. The test plan also reports all 30 containers up for about 19 hours before fault injection; this is an observational stability note, not a controlled recovery test.
+Evidence: \protect\path{docs/results/faults.txt}. F2, F4, F5 and F7 were not executed. The test plan also reports all 30 containers up for about 19 hours before fault injection; this is an observational stability note, not a controlled recovery test.
 
 \section{Evaluation and results}
 \label{sec:results}
@@ -701,9 +743,18 @@ All-room radiator + AHU (kWh) & 259.5 & 280.7 & 282.6\\\bottomrule\end{tabularx}
  ymajorgrids=true,grid style={black!10}]
 \addplot[fill=serviceblue,draw=blue!60] coordinates {(Reactive,122) (Persistence,2) (Timetable,0)};
 \end{axis}\end{tikzpicture}
-\caption{Existing R6--R8 exceedance results. Energy and comfort must be assessed alongside this air-quality metric.}\label{fig:results}
+\caption{Occupied CO\textsubscript{2} exceedance in the lecture rooms, runs R6--R8. Energy and comfort must be assessed alongside this air-quality metric.}\label{fig:results}
 \end{figure}
-Both planner variants exceed FR-04's 50\% reduction criterion for the two lecture rooms in this comparison: persistence reduces minutes by about 98\%, timetable by 100\%. Timetable also improves lecture comfort to 84.7\%, still below FR-02's 90\%. Relative to reactive-only, all-room heat energy rises by about 8.2\% with persistence and 8.9\% with timetable. NFR-04 specifies a fixed-schedule baseline, which was not run, so this comparison neither establishes nor refutes that requirement.
+Both planner variants exceed FR-04's 50\% reduction criterion for the two lecture rooms in this comparison: persistence reduces minutes by about 98\%, timetable by 100\%. Timetable also improves lecture comfort to 84.7\%, still below FR-02's 90\%. Relative to reactive-only, all-room heat energy rises by about 8.2\% with persistence and 8.9\% with timetable. NFR-04 specifies a fixed-schedule baseline, which was not run, so this comparison neither establishes nor refutes that requirement. Figure~\ref{fig:planner} shows that both planner variants keep A117 below 1000 ppm across its three lectures, while reactive control alone repeatedly overshoots; Figure~\ref{fig:s1} shows a full R8 day in A109.
+
+\begin{figure}[H]\centering
+\includegraphics[width=0.9\linewidth]{e3_planner_A117.png}
+\caption{A117, runs R6--R8: observed CO\textsubscript{2} and temperature with reactive control only (R6) and the two planner variants (R7, R8).}\label{fig:planner}
+\end{figure}
+\begin{figure}[H]\centering
+\includegraphics[width=0.8\linewidth]{s1_A109.png}
+\caption{A109, run R8 (timetable): observed CO\textsubscript{2}, ventilation, temperature and occupancy over the simulated weekday.}\label{fig:s1}
+\end{figure}
 
 \paragraph{Whole-building limits.}\mbox{}\par
 \noindent\begin{tabularx}{\linewidth}{lrrrX}\toprule R8 room & Exceed sim-min & Peak ppm & Comfort (\%) & Heat + AHU (kWh)\\\midrule
@@ -728,8 +779,8 @@ There is one run per final variant. Sensor noise, clock resets and differing rec
 
 Prediction C expected about 95\%/91\% lecture-room comfort, exceeding the observed 87.4\%/83.8\%. Shorter live preheating, device lag and observed rather than ideal metrics are plausible explanations, not verified causes. Its commit preceded final evaluation but followed the R6/R7 runs, so it was not a fully prior prediction of all variants. The useful conclusion is conditional: booked anticipation improves this recorded scenario, with higher energy and remaining comfort/fika deficiencies.
 
-\paragraph{Additional temperature metric from the newer branch.}
-For the same final R6/R7/R8 lecture-room runs, occupied time with observed air temperature in 18--24 $^\circ$C is 95.6\%, 93.3\% and 99.3\%, respectively. In R8 the per-room shares are A109 100.0\%, A117 99.1\%, A110 87.6\%, and A113C 99.6\%; A323 has no occupied minutes. These are reanalysed existing runs. FR-02 still fails against its original 20--24 $^\circ$C target, and air temperature cannot establish operative-temperature compliance.
+\paragraph{Additional temperature metric.}
+For the same final R6/R7/R8 lecture-room runs, occupied time with observed air temperature in 18--24 $^\circ$C is 95.6\%, 93.3\% and 99.3\%, respectively. In R8 the per-room shares are A109 100.0\%, A117 99.1\%, A110 87.6\%, and A113C 99.6\%; A323 has no occupied minutes. These values come from the same runs. FR-02 still fails against its original 20--24 $^\circ$C target, and air temperature cannot establish operative-temperature compliance.
 
 \paragraph{Shared-model optimism.}
 The planner rollout calls the simulation's own physics step with the same parameters and outdoor-temperature formula. Consequently the evaluation has no model--plant mismatch. Exact occupancy counts and complete registered attendance also favour forecasting and occupancy-based fallback. Results are optimistic simulator evidence, not demonstrated real-building performance or a quantified upper bound.
@@ -737,13 +788,13 @@ The planner rollout calls the simulation's own physics step with the same parame
 \section{Dashboard}
 BuildSim provides the live spatial view. Viewer consumes observations, decisions and service health, then replaces the full room-layer and alert collections through REST. A single writer avoids two project services overwriting each other's layers. Room identity connects conditions and decisions to the five physical spaces; decision reasons explain why ventilation or heating was requested.
 
-Grafana, using the pinned Infinity datasource, reads pipeline JSON queries for time-series and decision inspection. It complements the 3D view with historical context rather than controlling equipment. A dashboard that remains reachable can still display stale data, so timestamps and degraded status matter. The latest energy fields are available from physics but are not automatically durable history streams. Figure~\ref{fig:grafana-dashboard} preserves the dashboard screenshot supplied with the source document. It shows observed A109 CO\textsubscript{2}, temperature, ventilation/occupancy and decision reasons. Its capture is illustrative: no run identifier is supplied, so it is not used to establish the R6--R8 metrics or fault-test outcomes.
+Grafana, using the pinned Infinity datasource, reads pipeline JSON queries for time-series and decision inspection. It complements the 3D view with historical context rather than controlling equipment. A dashboard that remains reachable can still display stale data, so timestamps and degraded status matter. The latest energy fields are available from physics but are not automatically durable history streams. Figure~\ref{fig:grafana-dashboard} shows the Grafana dashboard for A109: observed CO\textsubscript{2}, temperature, ventilation level with occupancy, and the latest decisions with their reasons.
 
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=\linewidth]{grafana_pic.jpeg}
-    \caption{Grafana dashboard for A109, preserved from the supplied source document. The screenshot illustrates the presentation interface; its run provenance is unspecified.}
+    \caption{Grafana dashboard for A109 (live view, last 15 minutes).}
     \label{fig:grafana-dashboard}
 \end{figure}
 
@@ -783,25 +834,22 @@ First address concrete quality and recovery gaps: elapsed-time frozen detection,
 
 Next improve comfort and decision quality: extend timetable-driven preheating, use observed temperature in heat decisions, retune reactive hysteresis as a simpler comparator, and improve unscheduled fika demand. Correct weather phase, calibrate thermal/flow parameters and make rollout actuator travel consistent with the simulated clock. Align training/inference aggregation and compare attendance-aware forecasts against persistence on independent dates and seeds before deployment.
 
-Finally complete the outstanding evidence when experimentation is authorised: fixed-schedule energy comparison, repeated matched weekdays, episode-level CO\textsubscript{2} recovery, setback timing, fault/restart recovery, loss checks and scaling to a breaking point. Preserve configuration, seed, model version and run windows with every result. The existing evidence supports a conditional lecture-room improvement; comfort, unscheduled rooms and operational guarantees remain priorities.
+Finally complete the outstanding evidence: fixed-schedule energy comparison, repeated matched weekdays, episode-level CO\textsubscript{2} recovery, setback timing, fault/restart recovery, loss checks and scaling to a breaking point. Preserve configuration, seed, model version and run windows with every result. The existing evidence supports a conditional lecture-room improvement; comfort, unscheduled rooms and operational guarantees remain priorities.
 
-\section*{Evidence and submission status}\addcontentsline{toc}{section}{Evidence and submission status}
-The report reflects main commit \texttt{66e0805} and the identified additions on \texttt{origin/tobias} at \texttt{270d623}. Existing run artifacts and recorded live fault tests support the stated results. The supplied dashboard screenshot is preserved as interface evidence. No new application experiments were run for this revision.
+\section*{Contribution statement}\addcontentsline{toc}{section}{Contribution statement}
+\noindent\begin{tabularx}{\linewidth}{lXX}\toprule
+Area & Tobias Hanke & Evangelos Vasilaras\\\midrule
+Architecture   & \fillin{fill in} & \fillin{fill in}\\
+Implementation & \fillin{fill in} & \fillin{fill in}\\
+Testing        & \fillin{fill in} & \fillin{fill in}\\
+Evaluation     & \fillin{fill in} & \fillin{fill in}\\
+Report         & \fillin{fill in} & \fillin{fill in}\\\bottomrule
+\end{tabularx}
 
-\clearpage
-\section*{Additional recorded evidence figures}\addcontentsline{toc}{section}{Additional recorded evidence figures}
-Figures below are checked-in plots from commit \texttt{fbb5552}; they are not new experiments.
+\appendix
+\section*{Appendix: A117 weekday trace}\addcontentsline{toc}{section}{Appendix: A117 weekday trace}
 \begin{figure}[H]\centering
-\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{s1_A109.png}
-\caption{Recorded A109 weekday conditions and control.}\end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{s1_A117.png}
-\caption{Recorded A117 weekday conditions and control.}\end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{e3_planner_A117.png}
-\caption{Recorded A117 planner comparison.}\end{figure}
-\begin{figure}[H]\centering
-\includegraphics[width=\linewidth,height=0.78\textheight,keepaspectratio]{f1_frozen_sensor.png}
-\caption{Recorded frozen-sensor test and controller fallback.}\end{figure}
-\clearpage
+\includegraphics[width=0.8\linewidth]{s1_A117.png}
+\caption{A117, run R8 (timetable): observed CO\textsubscript{2}, ventilation, temperature and occupancy over the simulated weekday.}\label{fig:s1-a117}
+\end{figure}
 \end{document}
