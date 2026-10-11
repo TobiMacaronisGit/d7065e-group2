@@ -1,8 +1,8 @@
 # D7065E Group 2 — CO₂-driven ventilation with thermal trade-off.
 # This file IS the C4 container diagram (docs/diagrams/container.d2): one service = one container = one folder.
 #
-#   docker compose up --build            everything, incl. BuildSim + occupancysim built from the course repo
-#   COURSE_REPO=../D7065E             where the course repo is checked out (see .env.example)
+#   docker compose up --build            everything, incl. BuildSim + occupancysim built from external/
+#                                        (vendored copy of the course repo, see external/README.md)
 #
 # Device containers (sensor-*, actuator-*) live in compose.devices.yml, generated from config/rooms.json.
 name: d7065e-group2
@@ -13,7 +13,7 @@ include:
 services:
   # ───────────────────────── course infrastructure (not ours) ─────────────────────────
   buildsim:
-    build: ${COURSE_REPO:-../D7065E}/buildingsim
+    build: external/buildingsim
     command: ["start", "--host", "0.0.0.0", "--port", "9090"]
     ports: ["127.0.0.1:9090:9090"]
     healthcheck:
@@ -25,7 +25,7 @@ services:
     restart: unless-stopped
 
   occupancysim:
-    build: ${COURSE_REPO:-../D7065E}/occupancysim
+    build: external/occupancysim
     environment:
       BUILDSIM_URL: http://buildsim:9090
       BUILDSIM_PUBLIC_URL: http://127.0.0.1:9090

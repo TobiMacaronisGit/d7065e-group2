@@ -28,11 +28,12 @@ The architecture document (the report's core) lives in [`docs/architecture.md`](
 | `scripts/` | `seed` (one-shot) | — | Compose generation, BuildSim/occupancysim seeding, fault injection |
 | `tests/` | — | — | end-to-end tests against the running stack |
 | `docs/` | — | — | architecture document, requirements, interfaces, test plan, D2 diagrams |
+| `external/` | `buildsim`, `occupancysim` | course infra | unmodified copy of BuildSim + occupancysim from the course repo, so the repo runs on its own (see `external/README.md`) |
 
 ## Run
 
 ```bash
-cp .env.example .env                 # set COURSE_REPO to your checkout of eislab-cps/D7065E
+cp .env.example .env                 # optional: occupancysim settings (defaults work)
 python3 scripts/gen_compose.py       # config/rooms.json → compose.devices.yml (20 device services)
 docker compose up --build            # BuildSim :9090, occupancysim :8081, Grafana :3000
 ```
