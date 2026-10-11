@@ -24,6 +24,17 @@ Time unit convention: **sim-min** = simulated minutes (the building's clock, 60�
 | REG-01 | Regulatory | Maintain a minimum ventilation rate at all times | Must | The commanded vent level is never below `control.vent_min_level`, in every state including NO_DATA | hard clamp after all rules | `control/test_rules.py`, code review of the clamp order |
 | SAF-01 | Safety | An unauthorised or out-of-range command is never applied | Must | Commands from an issuer other than `control`, outside range, or older than 120 s wall are rejected and counted | `actuator.validate()` | `actuator/test_validate.py`, F6 |
 
+> **FR-02 — source of the 20–24 °C band (added 11 Oct).** The band is a project **comfort target**, not a legal
+> requirement; its origin was not documented when the requirement was written. The Swedish public-health
+> guidance, Folkhälsomyndigheten **HSLF-FS 2024:10** (replaced FoHMFS 2014:17), gives *limits*, not a comfort range:
+> lowest operative temperature **18 °C** (20 °C for sensitive groups), highest operative temperature **24 °C**
+> in autumn, winter and spring, highest air temperature 26 °C in summer. FR-02 is therefore **stricter** than the
+> official lower limit; `scripts/compare_runs.py` reports both (`comfort_%` = 20–24 °C, `fohm_%` = 18–24 °C).
+> Two caveats: the guidance refers to **operative** temperature, our model has **air** temperature only; and the
+> 20–24 °C band is commonly attributed to EN 16798-1 (category II, heating season) — not verified by us.
+> Source: <https://www.folkhalsomyndigheten.se/contentassets/1c28701a4c8f49cabce85e3bb65695dc/hslf-fs-2024-10.pdf>
+
+
 ## Non-requirements (deliberately out of scope)
 
 - No authentication or encryption anywhere (BuildSim has none; this is a laptop lab — stated as a limitation, not solved).

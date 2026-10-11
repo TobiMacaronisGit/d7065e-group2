@@ -12,7 +12,8 @@ Metrics per room:
   occ_min      occupied sim-minutes (occupancy > 0)
   exceed_min   occupied sim-minutes with mean CO2 > 1000 ppm          (FR-01, FR-04)
   peak_co2     highest per-minute mean CO2 of the day (ppm)
-  comfort_%    occupied sim-minutes with 20 <= T <= 24 degC            (FR-02)
+  comfort_%    occupied sim-minutes with 20 <= T <= 24 degC            (FR-02, project comfort target)
+  fohm_%       occupied sim-minutes with 18 <= T <= 24 degC  (Folkhälsomyndigheten HSLF-FS 2024:10 limits, operative temp.)
   vent_changes how often control changed the commanded vent level      (NFR-03)
   planner_dec  decisions in which the planner raised ventilation
   heater_kwh   modelled room-heater energy (physics, since its restart)
@@ -106,6 +107,7 @@ def room_metrics(base: str, run: dict, room: str) -> dict:
     exceed = sum(1 for m in occupied if co2.get(m, 0) > 1000)
     comfort_n = sum(1 for m in occupied if m in temp and 20.0 <= temp[m] <= 24.0)
     comfort_d = sum(1 for m in occupied if m in temp)
+    fohm_n = sum(1 for m in occupied if m in temp and 18.0 <= temp[m] <= 24.0)
     dec = query(base, f"""
         SELECT sum(CASE WHEN prev IS NOT NULL AND vent <> prev THEN 1 ELSE 0 END) AS changes,
                sum(CASE WHEN reason LIKE '%planner%' THEN 1 ELSE 0 END) AS planner
@@ -118,6 +120,7 @@ def room_metrics(base: str, run: dict, room: str) -> dict:
         "exceed_min": exceed,
         "peak_co2": round(max(co2.values())) if co2 else None,
         "comfort_%": round(100.0 * comfort_n / comfort_d, 1) if comfort_d else None,
+        "fohm_%": round(100.0 * fohm_n / comfort_d, 1) if comfort_d else None,
         "vent_changes": int(d.get("changes") or 0),
         "planner_dec": int(d.get("planner") or 0),
         "heater_kwh": phys.get("energy_kwh"),
@@ -148,7 +151,7 @@ def main() -> None:
     for rid, run in runs.items():
         print(f"| {rid} | {run['name']} | {run['start']} → {run['end'][11:]} |")
 
-    keys = ["occ_min", "exceed_min", "peak_co2", "comfort_%", "vent_changes", "planner_dec",
+    keys = ["occ_min", "exceed_min", "peak_co2", "comfort_%", "fohm_%", "vent_changes", "planner_dec",
             "heater_kwh", "ahu_kwh", "energy_kwh"]
     for room in ROOMS:
         print(f"\n## {room}\n")
@@ -169,6 +172,12 @@ def main() -> None:
         den = sum(results[r][room]["occ_min"] for room in FOCUS)
         comf.append(fmt(round(num / den, 1) if den else None))
     print("| comfort_% | " + " | ".join(comf) + " |")
+    fohm = []
+    for r in results:
+        num = sum((results[r][room]["fohm_%"] or 0) * results[r][room]["occ_min"] for room in FOCUS)
+        den = sum(results[r][room]["occ_min"] for room in FOCUS)
+        fohm.append(fmt(round(num / den, 1) if den else None))
+    print("| fohm_% (18-24 degC) | " + " | ".join(fohm) + " |")
     print("| energy_kwh (all rooms) | " + " | ".join(
         fmt(round(sum(results[r][room]["energy_kwh"] or 0 for room in ROOMS), 1)) for r in results) + " |")
     print("\nData check — sim-minutes with a CO2 reading per room (sensors sample every 2 sim-min, expect ≈ 315): " + ", ".join(
