@@ -1,0 +1,64 @@
+# D7065E Group 2 - counterpart to the redrawn report, 11 October 2026.
+# Checked implementation: 66e0805. Original docs/diagrams sources are preserved.
+# Render: d2 --theme 0 --pad 30 container-part1.d2 container-part1.svg
+# Colours: blue project; purple infrastructure; green device; grey course/external.
+# These are references to the same services as container.d2.
+# Canonical IDs: physics=sys.truth.physics; sensor=sys.device.sensor;
+# occ=sys.device.occ; actuator=sys.device.actuator; other project services=sys.<name>.
+# The two panels partition all 20 original runtime edges (13 + 7).
+# Panel B adds the two seed setup writes already shown in container.d2.
+classes: {
+  service: {style: {fill: "#DBEAFE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  infrastructure: {style: {fill: "#EDE9FE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  device: {style: {fill: "#DCFCE7"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  external: {style: {fill: "#F0F0F0"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  note: {style: {fill: "#FFFFD9"; stroke: "#777777"; stroke-width: 1; font-size: 16; bold: false; italic: false}}
+  phase: {style: {fill: "#FFFFFF"; stroke: "#BBBBBB"; stroke-width: 1; font-size: 16; font-color: "#666666"; bold: true}}
+  msg: {style: {stroke: "#333333"; stroke-width: 2; font-size: 16; bold: false; italic: false}}
+  ret: {style: {stroke: "#333333"; stroke-width: 2; stroke-dash: 5; font-size: 16; bold: false; italic: false}}
+  check: {shape: diamond; style: {fill: "#EBEBFF"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+}
+
+direction: down
+
+occupancysim: "occupancysim\nHTTP 8081" {
+  class: external
+}
+buildsim: "BuildSim\nHTTP 9090" {
+  class: external
+}
+physics: "physics\nHTTP 8090\nCO₂ + heat + energy" {
+  class: service
+}
+sensor: "10 sensors\nCO₂ + temperature\nOne container each" {
+  class: device
+}
+occ: "occupancy_counter\nOne shared container" {
+  class: device
+}
+broker: "MQTT broker\nPort 1883" {
+  class: infrastructure
+}
+control: "control\nHTTP 8091\nEvery 5 s wall" {
+  class: service
+}
+actuator: "10 actuators\nVentilation + heating\nOne container each" {
+  class: device
+}
+buildsim -> physics: "room inputs" {class: ret}
+physics -> sensor: "room truth" {class: ret}
+sensor -> broker: "observations" {class: msg}
+buildsim -> occ: "persons" {class: ret}
+occ -> broker: "head counts" {class: msg}
+broker -> control: "inputs + plans" {class: msg}
+control -> broker: "cmd / decision" {class: msg}
+broker -> actuator: "commands" {class: msg}
+actuator -> buildsim: "reached states" {class: msg}
+actuator -> broker: "state + fault" {class: msg}
+sensor -> buildsim: "display values" {class: msg}
+occupancysim -> buildsim: "occupancy + entities" {class: msg}
+occupancysim -> physics: "simulated clock" {class: ret}
+details: "A. Closed loop and simulation support\nA109, A117, A110, A323, A113C: one CO₂ + temperature sensor per room;\none ventilation + heating actuator per room. Sensors/counts: every 2 s wall.\nRead responses are dashed; requests/messages/writes are solid.\nMQTT uses QoS 1; commands/states/plans/health are retained.\nPhysics uses the shared clock, reached states and occupancy.\nTruth is sampled through device lag/noise/faults; the boundary is by convention.\nSensors also write display values; actuators report state/target/motion/fault.\nPhysics energy counters are HTTP truth, not an automatic MQTT archive." {
+  class: note
+  near: bottom-center
+}

@@ -1,0 +1,60 @@
+# D7065E Group 2 - counterpart to the redrawn report, 11 October 2026.
+# Checked implementation: 66e0805. Original docs/diagrams sources are preserved.
+# Render: d2 --theme 0 --pad 30 container-part2.d2 container-part2.svg
+# Colours: blue project; purple infrastructure; green device; grey course/external.
+# These are references to the same services as container.d2.
+# Canonical IDs: physics=sys.truth.physics; sensor=sys.device.sensor;
+# occ=sys.device.occ; actuator=sys.device.actuator; other project services=sys.<name>.
+# The two panels partition all 20 original runtime edges (13 + 7).
+# Panel B adds the two seed setup writes already shown in container.d2.
+classes: {
+  service: {style: {fill: "#DBEAFE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  infrastructure: {style: {fill: "#EDE9FE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  device: {style: {fill: "#DCFCE7"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  external: {style: {fill: "#F0F0F0"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  note: {style: {fill: "#FFFFD9"; stroke: "#777777"; stroke-width: 1; font-size: 16; bold: false; italic: false}}
+  phase: {style: {fill: "#FFFFFF"; stroke: "#BBBBBB"; stroke-width: 1; font-size: 16; font-color: "#666666"; bold: true}}
+  msg: {style: {stroke: "#333333"; stroke-width: 2; font-size: 16; bold: false; italic: false}}
+  ret: {style: {stroke: "#333333"; stroke-width: 2; stroke-dash: 5; font-size: 16; bold: false; italic: false}}
+  check: {shape: diamond; style: {fill: "#EBEBFF"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+}
+
+direction: down
+
+occupancysim: "occupancysim\nHTTP 8081" {
+  class: external
+}
+buildsim: "BuildSim\nHTTP 9090" {
+  class: external
+}
+broker: "MQTT broker\nPort 1883" {
+  class: infrastructure
+}
+pipeline: "pipeline\nHTTP 8092\nObserved history" {
+  class: infrastructure
+}
+planner: "planner\nHTTP 8093\nEvery 10 s wall" {
+  class: service
+}
+viewer: "viewer\nHTTP 8094\nRoom layers + alerts" {
+  class: service
+}
+grafana: "grafana\nHTTP 3000" {
+  class: infrastructure
+}
+seed: "seed\nOne-shot setup" {
+  class: service
+}
+broker -> pipeline: "archive events" {class: msg}
+pipeline -> planner: "observed history" {class: ret}
+occupancysim -> planner: "clock + bookings" {class: ret}
+planner -> broker: "retained Plan" {class: msg}
+broker -> viewer: "live events" {class: msg}
+viewer -> buildsim: "layers + alerts" {class: msg}
+pipeline -> grafana: "query JSON" {class: ret}
+seed -> buildsim: "register" {class: msg}
+seed -> occupancysim: "room roles" {class: msg}
+details: "B. Planning, history, presentation and setup\nSame broker, BuildSim and occupancysim as panel A; these are not extra containers.\n30 continuing containers = 10 sensors + 10 actuators + 10 shared services.\nPlus seed: one-shot equipment registration and room roles.\nHistory: until + max_age_s, ordered by simulated time.\nForecast h=5,10,15,20,25,30 sim-min; roll out u=0,1,2,3.\nChoose lowest level with peak <900 ppm; if none qualifies, use level 3.\nNo booking/unavailable: persistence in deployed setup. Plans also carry heating.\nPipeline: bronze JSONL / silver Parquet; compaction every 300 s wall.\nArchive bldg/# and sys/health/#; viewer replaces full layers/alerts.\nGrafana 12.3.0 + Infinity 4.1.1. Control continues reactively if planning fails.\nHTTP host ports 8090-8094 map to internal 8000; devices/seed publish no ports." {
+  class: note
+  near: bottom-center
+}

@@ -1,72 +1,44 @@
-# Updated copy of context.d2; original retained unchanged.
-# Implementation reference: 20756de. Arrows show information flow.
-# Render: d2 --theme 0 context-updated.d2 context-updated.svg
+# D7065E Group 2 - counterpart to the redrawn report, 11 October 2026.
+# Checked implementation: 66e0805. Original docs/diagrams sources are preserved.
+# Render: d2 --theme 0 --pad 30 context.d2 context.svg
+# Colours: blue project; purple infrastructure; green device; grey course/external.
+classes: {
+  service: {style: {fill: "#DBEAFE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  infrastructure: {style: {fill: "#EDE9FE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  device: {style: {fill: "#DCFCE7"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  external: {style: {fill: "#F0F0F0"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  note: {style: {fill: "#FFFFD9"; stroke: "#777777"; stroke-width: 1; font-size: 16; bold: false; italic: false}}
+  phase: {style: {fill: "#FFFFFF"; stroke: "#BBBBBB"; stroke-width: 1; font-size: 16; font-color: "#666666"; bold: true}}
+  msg: {style: {stroke: "#333333"; stroke-width: 2; font-size: 16; bold: false; italic: false}}
+  ret: {style: {stroke: "#333333"; stroke-width: 2; stroke-dash: 5; font-size: 16; bold: false; italic: false}}
+  check: {shape: diamond; style: {fill: "#EBEBFF"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+}
+
 direction: down
 
-manager: Building manager {
-  shape: person
+occupant: "Occupants" {
+  class: external
 }
-occupant: Occupants {
-  shape: person
+manager: "Building manager" {
+  class: external
 }
-
-sys: |md
-  # Ventilation & climate control
-  **[our system — five rooms on level 0]**
-
-  Room physics, simulated sensors and actuators,
-  reactive control, advisory planning,
-  history and presentation integration.
-
-  Balances CO₂, thermal comfort and
-  radiator + air-handling-unit heating energy.
-| {
-  style.fill: "#dbeafe"
-  style.stroke: "#2563eb"
+occupancysim: "occupancysim\nPeople, bookings, clock" {
+  class: external
 }
-
-buildsim: |md
-  # BuildSim
-  **[external, course-provided]**
-
-  Shared rooms, equipment, occupancy,
-  sensor values and reached actuator states.
-  Browser-based 3D building view.
-
-  Passive state; project physics and decisions
-  run in separate services.
-| {
-  style.stroke-dash: 4
-  style.fill: "#f3f4f6"
+sys: "Ventilation and climate control\nFive rooms on level 0\nPhysics, devices, control,\nplanning and history" {
+  class: service
 }
-
-occupancysim: |md
-  # occupancysim
-  **[external, course-provided]**
-
-  Simulated people, lecture bookings and clock.
-  Writes occupancy and entities to BuildSim.
-  Evaluation clock: 60 sim-seconds / wall-second.
-| {
-  style.stroke-dash: 4
-  style.fill: "#f3f4f6"
+buildsim: "BuildSim\nOccupancy, values, reached states\nBrowser 3D view" {
+  class: external
 }
-
-occupant -> occupancysim: "simulated presence and scheduled arrivals"
-occupancysim -> buildsim: "occupancy and entities [REST writes]"
-occupancysim -> sys: "clock + lecture bookings [REST read responses]"
-buildsim -> sys: "occupancy + reached actuator states [REST read responses]"
-sys -> buildsim: "sensor values, reached states, room layers and alerts [REST writes]"
-sys -> manager: "history, decisions and health [Grafana / HTTP]"
-buildsim -> manager: "live 3D room conditions and alerts [browser]"
-
-scope: |md
-  **Scope and boundary**
-  A109 / A117: lecture rooms; A110: fika; A323 / A113C: offices.
-  No manual-override workflow is implemented.
-  Provided services and project services share a lab host/network;
-  the physical-truth boundary is a code convention, not an access restriction.
-| {
-  style.fill: "#fffbeb"
-  style.stroke-dash: 3
+occupant -> occupancysim: "presence" {class: msg}
+occupancysim -> buildsim: "occupancy + entities" {class: msg}
+occupancysim -> sys: "clock + bookings" {class: ret}
+buildsim -> sys: "room inputs" {class: ret}
+sys -> buildsim: "values / states / view" {class: msg}
+sys -> manager: "history / decisions" {class: msg}
+buildsim -> manager: "3D view" {class: ret}
+scope: "Scope and boundary\nA109/A117: lectures; A110: fika; A323/A113C: offices.\nNo manual override. Shared lab host/network.\nTruth separation is a code convention.\nBalance CO₂, thermal comfort and radiator + AHU energy.\nManager also sees health; BuildSim shows conditions and alerts.\nClock factor: 60 sim-seconds per wall-second.\n\nShort-label contracts\nRoom inputs: occupancy and reached actuator states.\nWrites: sensor values, reached states, room layers and alerts.\nDashed arrows: read/browser responses; solid: messages/writes." {
+  class: note
+  near: bottom-center
 }

@@ -1,101 +1,74 @@
-# Updated copy of state.d2; original retained unchanged.
-# Implementation reference: 20756de, control/rules.py.
-# A mode is selected again every evaluation; this is not a latched alarm machine.
-# Render: d2 --theme 0 state-updated.d2 state-updated.svg
+# D7065E Group 2 - counterpart to the redrawn report, 11 October 2026.
+# Checked implementation: 66e0805. Original docs/diagrams sources are preserved.
+# Render: d2 --theme 0 --pad 30 state.d2 state.svg
+# Colours: blue project; purple infrastructure; green device; grey course/external.
+# Any prior mode may select any new mode on the next evaluation.
+# Executable control/rules.py takes precedence over its narrower introductory docstring.
+classes: {
+  service: {style: {fill: "#DBEAFE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  infrastructure: {style: {fill: "#EDE9FE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  device: {style: {fill: "#DCFCE7"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  external: {style: {fill: "#F0F0F0"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  note: {style: {fill: "#FFFFD9"; stroke: "#777777"; stroke-width: 1; font-size: 16; bold: false; italic: false}}
+  phase: {style: {fill: "#FFFFFF"; stroke: "#BBBBBB"; stroke-width: 1; font-size: 16; font-color: "#666666"; bold: true}}
+  msg: {style: {stroke: "#333333"; stroke-width: 2; font-size: 16; bold: false; italic: false}}
+  ret: {style: {stroke: "#333333"; stroke-width: 2; stroke-dash: 5; font-size: 16; bold: false; italic: false}}
+  check: {shape: diamond; style: {fill: "#EBEBFF"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+}
+
 direction: down
 
-evaluate: |md
-  # Evaluate every 5 s wall
-  Assess CO₂ quality, occupancy age and plan age.
-  Any previous mode can select any new mode through this path.
-| {style.fill: "#dbeafe"}
-
-trusted: "CO₂ quality == ok?" {
-  shape: diamond
-  style.fill: "#e0e7ff"
+evaluate: "Evaluate every 5 s wall\nAssess CO₂ quality, occupancy age and plan age" {
+  class: service
 }
-high: "Trusted CO₂ ≥ 1200 ppm?" {
-  shape: diamond
-  style.fill: "#e0e7ff"
+trusted: "CO₂ trusted?" {
+  class: check
+}
+high: "CO₂ ≥1200 ppm?" {
+  class: check
 }
 occ: "Occupancy fresh?" {
-  shape: diamond
-  style.fill: "#e0e7ff"
+  class: check
 }
-
-NORMAL: |md
-  # NORMAL
-  Trusted CO₂ below 1200 ppm.
-  Reactive request: 0 / 1 / 2 at 800 / 1000 ppm thresholds.
-  A fresh higher plan may raise ventilation.
-| {style.fill: "#dcfce7"}
-
-SAFETY: |md
-  # SAFETY
-  Trusted CO₂ at least 1200 ppm.
-  Request maximum ventilation (3).
-  Plan cannot reduce this request.
-| {style.fill: "#fecaca"; style.bold: true}
-
-DEGRADED: |md
-  # DEGRADED
-  CO₂ missing, stale or frozen; occupancy fresh.
-  Request 2 when occupied, 0 when empty.
-  A fresh higher plan may raise ventilation.
-| {style.fill: "#fef3c7"}
-
-NO_DATA: |md
-  # NO_DATA
-  Neither trusted CO₂ nor fresh occupancy.
-  Request ventilation 2 and occupied heating (21 °C).
-  A plan does not raise ventilation in this branch.
-| {style.fill: "#fee2e2"}
-
-constrain: |md
-  # Apply ventilation constraints
-  Downward changes outside SAFETY require 300 sim-s dwell.
-  Trusted CO₂ also needs a 100-ppm step-down margin.
-  Final clamp: max(vent_min_level, min(vent_max, request)).
-  Current configured minimum is 0; maximum is 3.
-| {style.fill: "#dbeafe"}
-
-heat: |md
-  # Select heating target
-  Fresh occupied count OR NO_DATA → 21 °C; otherwise 17 °C.
-  A fresh higher plan may preheat when occupancy is not positive/fresh.
-  Observed temperature does not select the central setpoint.
-| {style.fill: "#dbeafe"}
-
-publish: |md
-  # Publish and remember
-  Decision + reason + inputs every evaluation.
-  Retained actuator commands only when targets change.
-  Target changes update the shared last-change time.
-| {style.fill: "#e0e7ff"}
-
-evaluate -> trusted
-trusted -> high: "yes"
-trusted -> occ: "no"
-high -> SAFETY: "yes"
-high -> NORMAL: "no"
-occ -> DEGRADED: "yes"
-occ -> NO_DATA: "no"
-SAFETY -> constrain
-NORMAL -> constrain
-DEGRADED -> constrain
-NO_DATA -> constrain
-constrain -> heat
-heat -> publish
-publish -> evaluate: "next evaluation; any mode may change"
-
-quality: |md
-  **What 'trusted' currently means**
-  CO₂ exists, simulated age ≤ 300 s,
-  and the last 8 publications are not identical.
-  Occupancy freshness uses the same age limit.
-  Plan age ≤ twice its horizon (normally 60 sim-min).
-
-  No general plausibility/drift check or future-timestamp rejection.
-  At factor 60, eight 2-s-wall samples span ≥ 14 sim-min;
-  the 10-sim-minute frozen-detection target is not guaranteed.
-| {style.fill: "#f3f4f6"; style.stroke-dash: 3}
+SAFETY: "SAFETY\nRequest level 3\nPlan cannot reduce it" {
+  class: service
+  style.fill: "#FFE0E0"
+}
+NORMAL: "NORMAL\nLevel 0: CO₂ <800 ppm\nLevel 1: 800 ≤CO₂ <1000 ppm\nLevel 2: 1000 ≤CO₂ <1200 ppm\nA higher fresh plan may raise it" {
+  class: service
+}
+DEGRADED: "DEGRADED\nCO₂ missing, stale or frozen\nFresh occupancy: occupied 2; empty 0\nA higher fresh plan may raise it" {
+  class: service
+  style.fill: "#FFFFD9"
+}
+NO_DATA: "NO_DATA\nNeither trusted CO₂ nor fresh occupancy\nRequest level 2\nNo plan increase for ventilation" {
+  class: service
+  style.fill: "#FFF0F0"
+}
+constrain: "Apply ventilation constraints\nDownward changes outside SAFETY: dwell ≥300 sim-s.\nTrusted CO₂ also requires a strict 100-ppm step-down margin.\nClamp: max(vent_min_level, min(vent_max, request)).\nConfigured minimum 0; maximum 3." {
+  class: service
+}
+heat: "Select heating target\nFresh occupied count OR NO_DATA: 21 °C; otherwise 17 °C.\nA fresh higher plan may preheat when not occupied.\nThis also applies in NO_DATA; its ventilation ignores plans.\nObserved temperature does not select the central setpoint." {
+  class: service
+}
+publish: "Publish and remember\nDecision + reason + inputs every evaluation.\nRetained commands only when targets change.\nVentilation or heat changes update shared last-change time." {
+  class: service
+}
+evaluate -> trusted: {class: msg}
+trusted -> high: "yes" {class: msg}
+trusted -> occ: "no" {class: msg}
+high -> SAFETY: "yes" {class: msg}
+high -> NORMAL: "no" {class: msg}
+occ -> DEGRADED: "yes" {class: msg}
+occ -> NO_DATA: "no" {class: msg}
+SAFETY -> constrain: {class: msg}
+NORMAL -> constrain: {class: msg}
+DEGRADED -> constrain: {class: msg}
+NO_DATA -> constrain: {class: msg}
+constrain -> heat: {class: msg}
+heat -> publish: {class: msg}
+publish -> evaluate: "next evaluation" {class: msg}
+quality: "Trusted-data limits\nCO₂ exists, simulated age ≤300 s, and last 8 publications are not identical.\nOccupancy uses the same age limit.\nPlan age ≤twice its horizon (normally 60 sim-min).\nNo general range/drift check or future-timestamp rejection.\nAt factor 60, eight 2-s-wall samples span at least 14 sim-min;\nthe 10-sim-minute frozen-detection target is not guaranteed." {
+  class: note
+  near: bottom-center
+}
