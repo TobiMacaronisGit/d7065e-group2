@@ -1,87 +1,104 @@
-# Updated copy of container.d2; original retained unchanged.
-# Implementation reference: 20756de. Arrows show information flow.
-# REST arrows from providers represent responses, not request direction.
-# Render: d2 --theme 0 container-updated.d2 container-updated.svg
+# D7065E Group 2 - counterpart to the redrawn report, 11 October 2026.
+# Checked implementation: 66e0805. Original docs/diagrams sources are preserved.
+# Render: d2 --theme 0 --pad 30 container.d2 container.svg
+# Colours: blue project; purple infrastructure; green device; grey course/external.
+classes: {
+  service: {style: {fill: "#DBEAFE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  infrastructure: {style: {fill: "#EDE9FE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  device: {style: {fill: "#DCFCE7"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  external: {style: {fill: "#F0F0F0"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  note: {style: {fill: "#FFFFD9"; stroke: "#777777"; stroke-width: 1; font-size: 16; bold: false; italic: false}}
+  phase: {style: {fill: "#FFFFFF"; stroke: "#BBBBBB"; stroke-width: 1; font-size: 16; font-color: "#666666"; bold: true}}
+  msg: {style: {stroke: "#333333"; stroke-width: 2; font-size: 16; bold: false; italic: false}}
+  ret: {style: {stroke: "#333333"; stroke-width: 2; stroke-dash: 5; font-size: 16; bold: false; italic: false}}
+  check: {shape: diamond; style: {fill: "#EBEBFF"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+}
+
 direction: down
 
-buildsim: "BuildSim\n[Go, course-provided]\nShared occupancy / sensor values / reached states + 3D viewer" {
-  style.stroke-dash: 4
-  style.fill: "#f3f4f6"
+buildsim: "BuildSim\nGo; HTTP 9090\nOccupancy, values, reached states\nBrowser 3D view" {
+  class: external
 }
-
-occupancysim: "occupancysim\n[Go, course-provided]\nPeople + simulated clock + lecture bookings" {
-  style.stroke-dash: 4
-  style.fill: "#f3f4f6"
+occupancysim: "occupancysim\nGo; HTTP 8081\nPeople, clock, bookings" {
+  class: external
 }
-
-sys: "Ventilation & climate control [our system]" {
-  style.stroke-dash: 4
-  style.fill: transparent
-
-  truth: "SIMULATION — sampled through devices" {
-    style.fill: "#fef3c7"
-    physics: "physics\n[Python] well-mixed CO₂ and heat balances\nReached ventilation + heating setpoint + occupancy\nSupply air 18 °C; heat recovery 75%\nRadiator and AHU energy counters [HTTP API]"
+sys: "Ventilation and climate control" {
+  style: {fill: "#FFFFFF"; stroke: "#999999"; stroke-dash: 4}
+  truth: "Simulation: sampled through devices" {
+    style: {fill: "#FFFFFF"; stroke: "#999999"; stroke-dash: 4}
+    physics: "physics\nPython; HTTP 8090\nCO₂, heat, radiator + AHU energy" {
+      class: service
+    }
   }
-
-  device: "DEVICE ADAPTERS" {
-    style.fill: "#dcfce7"
-    sensor: "sensor-{co2,temp}-{room} ×10\n[Python] one container per sensor\nSample every 2 s wall; simulated lag, noise and faults"
-    occ: "occupancy_counter\n[Python] one shared container\nCounts BuildSim persons per room every 2 s wall"
-    actuator: "actuator-{vent,heat}-{room} ×10\n[Python] one container per actuator\nValidate issuer/range/age; rate-limit motion;\nwrite reached state; publish state/fault"
+  device: "Device adapters" {
+    style: {fill: "#FFFFFF"; stroke: "#999999"; stroke-dash: 4}
+    sensor: "sensor-* ×10\nCO₂ + temperature\nOne container per sensor\nSample every 2 s wall" {
+      class: device
+    }
+    occ: "occupancy_counter\nOne shared container\nCount persons every 2 s wall" {
+      class: device
+    }
+    actuator: "actuator-* ×10\nVentilation + heating\nOne container per actuator\nValidate and rate-limit motion" {
+      class: device
+    }
   }
-
-  broker: "broker\n[Mosquitto] MQTT QoS 1\nRetained commands, states, plans and health" {
-    shape: queue
-    style.fill: "#e0e7ff"
+  broker: "broker\nMosquitto; MQTT 1883\nQoS 1; retained targets,\nstates, plans and health" {
+    class: infrastructure
   }
-
-  control: "control\n[Python] every 5 s wall\nObserved MQTT inputs; per-room rules and quality modes\nPlan may raise reactive ventilation; final minimum clamp\nCommands on changed targets; every decision has a reason" {
-    style.fill: "#dbeafe"
+  control: "control\nPython; HTTP 8091\nEvaluate every 5 s wall\nRules, quality and higher advice" {
+    class: service
   }
-
-  planner: "planner\n[Python + numpy] every 10 s wall\nBookings → six occupancy horizons over 30 sim-min\nNo booking/unavailable → persistence in deployed setup\nCO₂ rollout → smallest level with predicted peak < 900 ppm\nSuggest ventilation and occupied/empty heating setpoint" {
-    style.fill: "#dbeafe"
+  planner: "planner\nPython/NumPy; HTTP 8093\nEvery 10 s wall\nForecast, roll out and advise" {
+    class: service
   }
-
-  pipeline: "pipeline\n[Python + DuckDB]\nBronze JSONL → silver Parquet; host-mounted data\nHistory/query API; compaction every 300 s wall\nHistory supports simulated until + receipt max_age_s" {
-    shape: cylinder
-    style.fill: "#e0e7ff"
+  pipeline: "pipeline\nPython/DuckDB; HTTP 8092\nBronze JSONL / silver Parquet\nObserved history + query API" {
+    class: infrastructure
   }
-
-  viewer: "viewer\n[Python] MQTT observations, decisions and health\nSingle writer of BuildSim room layers + alerts"
-
-  grafana: "Grafana 12.3.0 + Infinity 4.1.1\nHistorical views from pipeline JSON query responses" {
-    style.fill: "#e0e7ff"
+  viewer: "viewer\nPython; HTTP 8094\nRoom layers + alerts" {
+    class: service
+  }
+  grafana: "grafana\nHTTP 3000\nInfinity; historical JSON" {
+    class: infrastructure
+  }
+  seed: "seed\nOne-shot equipment + room roles\nNo published port" {
+    class: service
   }
 }
-
-# Closed loop. All MQTT edges refer to the same nested broker.
-buildsim -> sys.truth.physics: "occupancy + reached states [REST read responses]"
-sys.truth.physics -> sys.device.sensor: "room truth [REST /rooms/{room}]"
-sys.device.sensor -> sys.broker: "observations [MQTT sensor/<type>]"
-buildsim -> sys.device.occ: "persons arrays [REST /api/occupancy]"
-sys.device.occ -> sys.broker: "head counts [MQTT sensor/occupancy]"
-sys.broker -> sys.control: "observations + retained plans"
-sys.control -> sys.broker: "changed-target commands + decisions/reasons"
-sys.broker -> sys.device.actuator: "commands [MQTT actuator/<kind>/cmd]"
-sys.device.actuator -> buildsim: "reached state [REST PUT /api/actuators/{id}/state]"
-sys.device.actuator -> sys.broker: "state, target, motion and fault [MQTT state]"
-sys.device.sensor -> buildsim: "display values [REST PUT /api/sensors/{id}/value]"
-
-# Planning and history. History carries observed data, not physics truth.
-sys.broker -> sys.pipeline: "bldg/# and sys/health/# [MQTT]"
-sys.pipeline -> sys.planner: "observed history [REST /history, until + max_age_s]"
-occupancysim -> sys.planner: "clock + sim.lectures [REST /api/state]"
-sys.planner -> sys.broker: "advisory Plan [MQTT plan, retained]"
-
-# Presentation and simulation support.
-sys.broker -> sys.viewer: "observations, decisions and health [MQTT]"
-sys.viewer -> buildsim: "full room-layer + alert arrays [REST PUT]"
-sys.pipeline -> sys.grafana: "history/query JSON [REST]"
-occupancysim -> buildsim: "occupancy and entities [REST writes]"
-occupancysim -> sys.truth.physics: "simulated clock [REST /api/state]"
-
-notes: "Operational boundaries\nOther project services also use the shared SimClock client.\nControl continues reactively when history/planning fails; existing plans expire by age.\nLoaded-model fallback remains in code, but the rejected linear model is not deployed.\nRadiator/AHU counters are HTTP truth fields, not an automatically archived MQTT stream.\nTruth access is separated by code convention on a shared network.\nOne-shot seed configures equipment and room roles; it is omitted from runtime flows." {
-  style.fill: "#fffbeb"
-  style.stroke-dash: 3
+# All 20 original runtime edges, with short labels.
+buildsim -> sys.truth.physics: "room inputs" {class: ret}
+sys.truth.physics -> sys.device.sensor: "room truth" {class: ret}
+sys.device.sensor -> sys.broker: "observations" {class: msg}
+buildsim -> sys.device.occ: "persons" {class: ret}
+sys.device.occ -> sys.broker: "head counts" {class: msg}
+sys.broker -> sys.control: "inputs + plans" {class: msg}
+sys.control -> sys.broker: "cmd / decision" {class: msg}
+sys.broker -> sys.device.actuator: "commands" {class: msg}
+sys.device.actuator -> buildsim: "reached states" {class: msg}
+sys.device.actuator -> sys.broker: "state + fault" {class: msg}
+sys.device.sensor -> buildsim: "display values" {class: msg}
+sys.broker -> sys.pipeline: "archive events" {class: msg}
+sys.pipeline -> sys.planner: "observed history" {class: ret}
+occupancysim -> sys.planner: "clock + bookings" {class: ret}
+sys.planner -> sys.broker: "retained Plan" {class: msg}
+sys.broker -> sys.viewer: "live events" {class: msg}
+sys.viewer -> buildsim: "layers + alerts" {class: msg}
+sys.pipeline -> sys.grafana: "query JSON" {class: ret}
+occupancysim -> buildsim: "occupancy + entities" {class: msg}
+occupancysim -> sys.truth.physics: "simulated clock" {class: ret}
+# Additional one-shot setup from Compose and scripts/seed.py.
+sys.seed -> buildsim: "register" {class: msg}
+sys.seed -> occupancysim: "room roles" {class: msg}
+details: "" {
+  near: bottom-center
+  direction: right
+  style: {fill: transparent; stroke: transparent}
+  inventory: "Compose inventory\n30 continuing containers + one-shot seed.\n10 sensors + 10 actuators + 10 shared services.\nShared: broker, grafana, BuildSim, occupancysim,\nphysics, occupancy_counter, control, planner,\npipeline and viewer.\nProject HTTP host ports 8090-8094 map to\ninternal port 8000. Devices and seed publish none." {
+    class: note
+  }
+  planning: "Planning and history\nSix horizons: 5, 10, 15, 20, 25, 30 sim-min.\nBookings absent: persistence in deployed setup.\nChoose lowest level with peak <900 ppm.\nIf none qualifies, return maximum level 3.\nPlan: level, predicted peak and heating target.\nHistory: until + max_age_s; simulated-time order.\nArchive: bldg/# and sys/health/#.\nCompaction: every 300 s wall." {
+    class: note
+  }
+  boundaries: "Contracts and operational boundaries\nRoom inputs: occupancy and reached states.\nActuator: state, target, motion and fault.\nSensors: lag, noise, faults; also write to BuildSim.\nViewer replaces full room-layer/alert arrays.\nPhysics: 18 °C supply, 75% recovery; energy counters.\nCounters: HTTP truth, not automatically MQTT.\nGrafana 12.3.0 + Infinity 4.1.1.\nReactive control continues if history/plans fail.\nPlans expire. Other services also use SimClock.\nTruth boundary: convention on a shared network.\nRejected linear model is not deployed;\nloaded-model fallback remains in code." {
+    class: note
+  }
 }

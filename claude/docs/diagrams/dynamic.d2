@@ -1,62 +1,111 @@
-# Updated copy of dynamic.d2; original retained unchanged.
-# Implementation reference: 20756de.
-# A117 has the 10:15 lecture in the recorded scenario; values are symbolic.
-# Render: d2 --theme 0 dynamic-updated.d2 dynamic-updated.svg
+# D7065E Group 2 - counterpart to the redrawn report, 11 October 2026.
+# Checked implementation: 66e0805. Original docs/diagrams sources are preserved.
+# Render: d2 --theme 0 --pad 30 dynamic.d2 dynamic.svg
+# Colours: blue project; purple infrastructure; green device; grey course/external.
+# Illustrative source order and original step numbers are preserved.
+# Actual planner code fetches history before consulting cached bookings (15 s wall TTL).
+# SimClock polls separately; the 10-s phase label denotes the planning loop.
+# A117 is booked 10:15-12:00. History uses until + max_age_s and simulated-time ordering.
+# Plan includes u*, peak at u*, and preheat target. Control already has live readings.
+# Commands require changed targets; decisions are published every evaluation.
+# Actuation uses QoS 1 and retention. Heating follows the same actuation/read-back path.
+# occupancy_counter independently publishes observed head counts.
+# Step 20 archives concurrently, not as a final batch. It is caption text in report part 2.
+# Reactive control continues if history or timetable requests fail.
+classes: {
+  service: {style: {fill: "#DBEAFE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  infrastructure: {style: {fill: "#EDE9FE"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  device: {style: {fill: "#DCFCE7"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  external: {style: {fill: "#F0F0F0"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+  note: {style: {fill: "#FFFFD9"; stroke: "#777777"; stroke-width: 1; font-size: 16; bold: false; italic: false}}
+  phase: {style: {fill: "#FFFFFF"; stroke: "#BBBBBB"; stroke-width: 1; font-size: 16; font-color: "#666666"; bold: true}}
+  msg: {style: {stroke: "#333333"; stroke-width: 2; font-size: 16; bold: false; italic: false}}
+  ret: {style: {stroke: "#333333"; stroke-width: 2; stroke-dash: 5; font-size: 16; bold: false; italic: false}}
+  check: {shape: diamond; style: {fill: "#EBEBFF"; stroke: "#333333"; stroke-width: 2; font-size: 18}}
+}
+
 shape: sequence_diagram
 
-occupancysim: occupancysim {
-  style.fill: "#f3f4f6"
+occupancysim: "occupancysim" {
+  class: external
 }
-pipeline: pipeline {
-  style.fill: "#e0e7ff"
+pipeline: "pipeline" {
+  class: infrastructure
 }
-planner: planner {
-  style.fill: "#dbeafe"
+planner: "planner" {
+  class: service
 }
-broker: MQTT broker {
-  style.fill: "#e0e7ff"
+broker: "MQTT broker" {
+  class: infrastructure
 }
-control: control {
-  style.fill: "#dbeafe"
+control: "control" {
+  class: service
 }
-actuator: actuator-vent-A117 {
-  style.fill: "#dcfce7"
+actuator: "vent actuator\nA117" {
+  class: device
 }
-buildsim: BuildSim {
-  style.fill: "#f3f4f6"
+buildsim: "BuildSim" {
+  class: external
 }
-physics: physics {
-  style.fill: "#fef3c7"
+physics: "physics" {
+  class: service
 }
-sensor: sensor-co2-A117 {
-  style.fill: "#dcfce7"
+sensor: "CO₂ sensor\nA117" {
+  class: device
 }
 
-planner -> occupancysim: "1. GET /api/state: current clock + today's bookings"
-occupancysim -> planner: "2. sim.lectures: A117 10:15–12:00; registered students"
-planner -> pipeline: "3. GET /history: observed occupancy/CO₂/temperature; until + max_age_s"
-pipeline -> planner: "4. Current-window observations, ordered by simulated time"
-planner -> planner: "5. Forecast 5…30 sim-min; early student/lecturer arrival; roll out levels 0…3"
-planner -> broker: "6. Retained Plan: suggested level u*, peak at u*, preheat target"
-broker -> control: "7. Deliver plan; control already holds live observed readings"
-control -> control: "8. Every 5 s wall: quality/mode, reactive demand, higher plan, dwell + clamp"
-control -> broker: "9. Publish changed-target command and auditable decision"
-broker -> actuator: "10. Deliver command [QoS 1, retained]"
-actuator -> actuator: "11. Validate ID, issuer, numeric range and wall age; travel at 0.5 level/s"
-actuator -> buildsim: "12. PUT /api/actuators/{id}/state: reached ventilation"
-physics -> buildsim: "13. GET reached actuator states + occupancy"
-buildsim -> physics: "14. Actual reached level + current persons"
-physics -> physics: "15. Integrate CO₂ and heat; 18 °C supply, 75% recovery; radiator + AHU energy"
-sensor -> physics: "16. GET /rooms/A117: new physical truth"
-physics -> sensor: "17. CO₂ truth; sensor adds 30-sim-second lag, noise and rounding"
-sensor -> broker: "18. Publish next observed CO₂ reading"
-broker -> control: "19. Feedback: next decision uses the changed observation"
-broker -> pipeline: "20. Archive observations, commands, reached states, plans and decisions"
-
-# This is an illustrative order of interactions, not a recorded event trace.
-# No invented sensor readings or claimed experiment outcomes are included.
-# Commands are emitted only when targets change; decisions are emitted each evaluation.
-# Heat commands follow the same validation/travel/read-back path as ventilation.
-# occupancy_counter separately publishes observed head counts via MQTT.
-# Broker delivery to pipeline is concurrent with the live exchanges, not a final batch.
-# Reactive control continues if history or timetable requests fail.
+inputs: "Inputs (every 10 s wall)" {
+  class: phase
+  planner -> occupancysim: "1. GET /api/state" {class: msg}
+  occupancysim -> planner: "2. Clock + bookings" {class: ret}
+  planner -> pipeline: "3. GET /history" {class: msg}
+  pipeline -> planner: "4. Observations" {class: ret}
+}
+forecast: "Forecast and rollout" {
+  class: phase
+  planner.step5: "5. Forecast n̂: h=5...30 min\nEarly student/lecturer arrivals\nRoll out CO₂ for u=0...3\nu*: lowest level with peak <900 ppm\nIf none qualifies: use level 3" {
+    class: note
+  }
+}
+advice: "Advice and decision" {
+  class: phase
+  planner -> broker: "6. Retained Plan" {class: msg}
+  broker -> control: "7. Deliver plan" {class: msg}
+  control.step8: "8. Every 5 s wall\nQuality + mode\nReactive demand\nRaise to plan\nDwell + final clamp" {
+    class: note
+  }
+  control -> broker: "9. Command + decision" {class: msg}
+}
+actuation: "Actuation" {
+  class: phase
+  broker -> actuator: "10. Deliver command" {class: msg}
+  actuator.step11: "11. Validate ID / issuer\nNumeric range / wall age\nMove at 0.5 level/s wall" {
+    class: note
+  }
+  actuator -> buildsim: "12. PUT reached state" {class: msg}
+}
+physics_phase: "Physics" {
+  class: phase
+  physics -> buildsim: "13. GET room inputs" {class: msg}
+  buildsim -> physics: "14. States + persons" {class: ret}
+  physics.step15: "15. Integrate CO₂ and heat\n18 °C supply; 75% recovery\nRadiator + AHU energy" {
+    class: note
+  }
+}
+observation: "Observation and feedback" {
+  class: phase
+  sensor -> physics: "16. GET /rooms/A117" {class: msg}
+  physics -> sensor: "17. CO₂ truth" {class: ret}
+  sensor.effects: "Sensor: 30-sim-second lag,\nnoise and rounding" {
+    class: note
+  }
+  sensor -> broker: "18. Observed CO₂" {class: msg}
+  broker -> control: "19. Feedback to control" {class: msg}
+}
+archive: "Concurrent archiving (throughout)" {
+  class: phase
+  broker -> pipeline: "20. Archive events" {class: msg}
+  pipeline.concurrent: "Concurrent throughout the sequence:\nobservations, commands, reached states,\nplans and decisions are archived." {
+    class: note
+  }
+}
