@@ -1,51 +1,101 @@
-# State machine — the per-room controller in control/rules.py.
-# Render: d2 --theme 0 state.d2 state.svg
-# Every transition here is a branch in RoomController.decide(); every branch is covered by a test.
+# Updated copy of state.d2; original retained unchanged.
+# Implementation reference: 20756de, control/rules.py.
+# A mode is selected again every evaluation; this is not a latched alarm machine.
+# Render: d2 --theme 0 state-updated.d2 state-updated.svg
 direction: down
 
-start: "" {shape: circle; style.fill: "#111827"; width: 20; height: 20}
+evaluate: |md
+  # Evaluate every 5 s wall
+  Assess CO₂ quality, occupancy age and plan age.
+  Any previous mode can select any new mode through this path.
+| {style.fill: "#dbeafe"}
 
-NO_DATA: |md
-  # NO_DATA
-  no trustworthy CO₂ **and** no occupancy
-
-  vent = safe default (2), setpoint = 21 °C
-| {style.fill: "#fee2e2"}
+trusted: "CO₂ quality == ok?" {
+  shape: diamond
+  style.fill: "#e0e7ff"
+}
+high: "Trusted CO₂ ≥ 1200 ppm?" {
+  shape: diamond
+  style.fill: "#e0e7ff"
+}
+occ: "Occupancy fresh?" {
+  shape: diamond
+  style.fill: "#e0e7ff"
+}
 
 NORMAL: |md
   # NORMAL
-  CO₂ fresh and plausible
-
-  vent from thresholds + hysteresis,
-  planner may raise
+  Trusted CO₂ below 1200 ppm.
+  Reactive request: 0 / 1 / 2 at 800 / 1000 ppm thresholds.
+  A fresh higher plan may raise ventilation.
 | {style.fill: "#dcfce7"}
-
-DEGRADED: |md
-  # DEGRADED
-  CO₂ stale > 300 sim-s **or** frozen (≥ 8 identical samples)
-
-  decide from occupancy instead; room flagged in the 3D viewer
-| {style.fill: "#fef3c7"}
 
 SAFETY: |md
   # SAFETY
-  CO₂ ≥ 1200 ppm
-
-  vent = max, no hysteresis, overrides everything
+  Trusted CO₂ at least 1200 ppm.
+  Request maximum ventilation (3).
+  Plan cannot reduce this request.
 | {style.fill: "#fecaca"; style.bold: true}
 
-start -> NO_DATA
-NO_DATA -> NORMAL: first fresh CO₂ reading
-NO_DATA -> DEGRADED: occupancy available,\nCO₂ still not trustworthy
-NORMAL -> DEGRADED: CO₂ stale or frozen
-DEGRADED -> NORMAL: CO₂ fresh and varying again
-DEGRADED -> NO_DATA: occupancy also lost
-NORMAL -> SAFETY: CO₂ ≥ 1200 ppm
-DEGRADED -> SAFETY: CO₂ ≥ 1200 ppm\n(a frozen sensor cannot reach this —\nwhich is exactly why DEGRADED ventilates)
-SAFETY -> NORMAL: CO₂ < 1200 ppm
+DEGRADED: |md
+  # DEGRADED
+  CO₂ missing, stale or frozen; occupancy fresh.
+  Request 2 when occupied, 0 when empty.
+  A fresh higher plan may raise ventilation.
+| {style.fill: "#fef3c7"}
 
-note: |md
-  **Invariant on every transition:** after all rules and any plan,
-  `vent = max(vent_min_level, min(vent_max, vent))` — REG-01 is a
-  clamp applied last, so no rule and no forecast can violate it.
+NO_DATA: |md
+  # NO_DATA
+  Neither trusted CO₂ nor fresh occupancy.
+  Request ventilation 2 and occupied heating (21 °C).
+  A plan does not raise ventilation in this branch.
+| {style.fill: "#fee2e2"}
+
+constrain: |md
+  # Apply ventilation constraints
+  Downward changes outside SAFETY require 300 sim-s dwell.
+  Trusted CO₂ also needs a 100-ppm step-down margin.
+  Final clamp: max(vent_min_level, min(vent_max, request)).
+  Current configured minimum is 0; maximum is 3.
+| {style.fill: "#dbeafe"}
+
+heat: |md
+  # Select heating target
+  Fresh occupied count OR NO_DATA → 21 °C; otherwise 17 °C.
+  A fresh higher plan may preheat when occupancy is not positive/fresh.
+  Observed temperature does not select the central setpoint.
+| {style.fill: "#dbeafe"}
+
+publish: |md
+  # Publish and remember
+  Decision + reason + inputs every evaluation.
+  Retained actuator commands only when targets change.
+  Target changes update the shared last-change time.
+| {style.fill: "#e0e7ff"}
+
+evaluate -> trusted
+trusted -> high: "yes"
+trusted -> occ: "no"
+high -> SAFETY: "yes"
+high -> NORMAL: "no"
+occ -> DEGRADED: "yes"
+occ -> NO_DATA: "no"
+SAFETY -> constrain
+NORMAL -> constrain
+DEGRADED -> constrain
+NO_DATA -> constrain
+constrain -> heat
+heat -> publish
+publish -> evaluate: "next evaluation; any mode may change"
+
+quality: |md
+  **What 'trusted' currently means**
+  CO₂ exists, simulated age ≤ 300 s,
+  and the last 8 publications are not identical.
+  Occupancy freshness uses the same age limit.
+  Plan age ≤ twice its horizon (normally 60 sim-min).
+
+  No general plausibility/drift check or future-timestamp rejection.
+  At factor 60, eight 2-s-wall samples span ≥ 14 sim-min;
+  the 10-sim-minute frozen-detection target is not guaranteed.
 | {style.fill: "#f3f4f6"; style.stroke-dash: 3}

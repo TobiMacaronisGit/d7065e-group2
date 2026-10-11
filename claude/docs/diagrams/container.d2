@@ -1,97 +1,87 @@
-# C4 Level 2 — Containers.  Render: d2 --theme 0 container.d2 container.svg
-# This diagram maps 1:1 to docker-compose.yml and to the repository folders.
+# Updated copy of container.d2; original retained unchanged.
+# Implementation reference: 20756de. Arrows show information flow.
+# REST arrows from providers represent responses, not request direction.
+# Render: d2 --theme 0 container-updated.d2 container-updated.svg
 direction: down
 
-buildsim: |md
-  # BuildSim
-  [Go, external] shared state + 3D viewer
-| {style.stroke-dash: 4; style.fill: "#f3f4f6"}
+buildsim: "BuildSim\n[Go, course-provided]\nShared occupancy / sensor values / reached states + 3D viewer" {
+  style.stroke-dash: 4
+  style.fill: "#f3f4f6"
+}
 
-occupancysim: |md
-  # occupancysim
-  [Go, external] people + simulated clock (60×)
-| {style.stroke-dash: 4; style.fill: "#f3f4f6"}
+occupancysim: "occupancysim\n[Go, course-provided]\nPeople + simulated clock + lecture bookings" {
+  style.stroke-dash: 4
+  style.fill: "#f3f4f6"
+}
 
-sys: Ventilation & climate control [our system] {
+sys: "Ventilation & climate control [our system]" {
   style.stroke-dash: 4
   style.fill: transparent
 
-  truth: TRUTH LAYER — never observable by the control system {
+  truth: "SIMULATION — sampled through devices" {
     style.fill: "#fef3c7"
-    physics: |md
-      # physics
-      [Python] ground truth CO₂ + temperature
-      per room, stepped on the simulated clock
-    |
+    physics: "physics\n[Python] well-mixed CO₂ and heat balances\nReached ventilation + heating setpoint + occupancy\nSupply air 18 °C; heat recovery 75%\nRadiator and AHU energy counters [HTTP API]"
   }
 
-  device: DEVICE LAYER — one container per physical device {
+  device: "DEVICE ADAPTERS" {
     style.fill: "#dcfce7"
-    sensor: |md
-      # sensor-{co2,temp}-{room} ×10
-      [Python] sample truth, add lag + noise + faults
-    |
-    occ: |md
-      # occupancy_counter
-      [Python] head count per room
-    |
-    actuator: |md
-      # actuator-{vent,heat}-{room} ×10
-      [Python] validate, rate-limit, apply, report
-    |
+    sensor: "sensor-{co2,temp}-{room} ×10\n[Python] one container per sensor\nSample every 2 s wall; simulated lag, noise and faults"
+    occ: "occupancy_counter\n[Python] one shared container\nCounts BuildSim persons per room every 2 s wall"
+    actuator: "actuator-{vent,heat}-{room} ×10\n[Python] one container per actuator\nValidate issuer/range/age; rate-limit motion;\nwrite reached state; publish state/fault"
   }
 
-  broker: |md
-    # broker
-    [Mosquitto] pub/sub, QoS 1, retained
-  | {shape: queue; style.fill: "#e0e7ff"}
+  broker: "broker\n[Mosquitto] MQTT QoS 1\nRetained commands, states, plans and health" {
+    shape: queue
+    style.fill: "#e0e7ff"
+  }
 
-  pipeline: |md
-    # pipeline
-    [Python + DuckDB] JSONL → Parquet, history + query API
-  | {shape: cylinder; style.fill: "#e0e7ff"}
+  control: "control\n[Python] every 5 s wall\nObserved MQTT inputs; per-room rules and quality modes\nPlan may raise reactive ventilation; final minimum clamp\nCommands on changed targets; every decision has a reason" {
+    style.fill: "#dbeafe"
+  }
 
-  control: |md
-    # control
-    [Python] reactive rules, safety clamp,
-    degraded handling — the fast loop
-  | {style.fill: "#dbeafe"}
+  planner: "planner\n[Python + numpy] every 10 s wall\nBookings → six occupancy horizons over 30 sim-min\nNo booking/unavailable → persistence in deployed setup\nCO₂ rollout → smallest level with predicted peak < 900 ppm\nSuggest ventilation and occupied/empty heating setpoint" {
+    style.fill: "#dbeafe"
+  }
 
-  planner: |md
-    # planner
-    [Python + numpy] occupancy forecast →
-    CO₂ rollout → suggested setpoints — the slow loop
-  | {style.fill: "#dbeafe"}
+  pipeline: "pipeline\n[Python + DuckDB]\nBronze JSONL → silver Parquet; host-mounted data\nHistory/query API; compaction every 300 s wall\nHistory supports simulated until + receipt max_age_s" {
+    shape: cylinder
+    style.fill: "#e0e7ff"
+  }
 
-  viewer: |md
-    # viewer
-    [Python] single writer of room layers + alerts
-  |
+  viewer: "viewer\n[Python] MQTT observations, decisions and health\nSingle writer of BuildSim room layers + alerts"
 
-  grafana: |md
-    # grafana
-    [Grafana] time series from the pipeline
-  |
+  grafana: "Grafana 12.3.0 + Infinity 4.1.1\nHistorical views from pipeline JSON query responses" {
+    style.fill: "#e0e7ff"
+  }
 }
 
-# --- the closed loop ---
-sys.truth.physics -> sys.device.sensor: ground truth [REST, poll 2 s]
-sys.device.sensor -> broker: reading [MQTT bldg/…/sensor/+]
-sys.device.occ -> broker: head count [MQTT]
-broker -> sys.control: readings, plans
-broker -> sys.pipeline: everything [MQTT bldg/#, sys/health/#]
-sys.control -> broker: command [MQTT …/cmd, retained]
-broker -> sys.device.actuator: command
-sys.device.actuator -> buildsim: PUT /api/actuators/{id}/state
-buildsim -> sys.truth.physics: GET actuator state + occupancy\n**this read-back closes the loop** [REST]
+# Closed loop. All MQTT edges refer to the same nested broker.
+buildsim -> sys.truth.physics: "occupancy + reached states [REST read responses]"
+sys.truth.physics -> sys.device.sensor: "room truth [REST /rooms/{room}]"
+sys.device.sensor -> sys.broker: "observations [MQTT sensor/<type>]"
+buildsim -> sys.device.occ: "persons arrays [REST /api/occupancy]"
+sys.device.occ -> sys.broker: "head counts [MQTT sensor/occupancy]"
+sys.broker -> sys.control: "observations + retained plans"
+sys.control -> sys.broker: "changed-target commands + decisions/reasons"
+sys.broker -> sys.device.actuator: "commands [MQTT actuator/<kind>/cmd]"
+sys.device.actuator -> buildsim: "reached state [REST PUT /api/actuators/{id}/state]"
+sys.device.actuator -> sys.broker: "state, target, motion and fault [MQTT state]"
+sys.device.sensor -> buildsim: "display values [REST PUT /api/sensors/{id}/value]"
 
-# --- observation and presentation ---
-sys.device.sensor -> buildsim: PUT /api/sensors/{id}/value
-sys.control -> broker: decision + reason [MQTT]
-sys.pipeline -> sys.planner: history [REST /history]
-sys.planner -> broker: plan [MQTT …/plan, retained]
-sys.pipeline -> sys.grafana: query [REST /query]
-broker -> sys.viewer: readings, decisions, health
-sys.viewer -> buildsim: PUT /api/room-layers, /api/alerts
-occupancysim -> buildsim: PUT occupancy, entities [REST]
-occupancysim -> sys.truth.physics: simulated clock [REST /api/state]
+# Planning and history. History carries observed data, not physics truth.
+sys.broker -> sys.pipeline: "bldg/# and sys/health/# [MQTT]"
+sys.pipeline -> sys.planner: "observed history [REST /history, until + max_age_s]"
+occupancysim -> sys.planner: "clock + sim.lectures [REST /api/state]"
+sys.planner -> sys.broker: "advisory Plan [MQTT plan, retained]"
+
+# Presentation and simulation support.
+sys.broker -> sys.viewer: "observations, decisions and health [MQTT]"
+sys.viewer -> buildsim: "full room-layer + alert arrays [REST PUT]"
+sys.pipeline -> sys.grafana: "history/query JSON [REST]"
+occupancysim -> buildsim: "occupancy and entities [REST writes]"
+occupancysim -> sys.truth.physics: "simulated clock [REST /api/state]"
+
+notes: "Operational boundaries\nOther project services also use the shared SimClock client.\nControl continues reactively when history/planning fails; existing plans expire by age.\nLoaded-model fallback remains in code, but the rejected linear model is not deployed.\nRadiator/AHU counters are HTTP truth fields, not an automatically archived MQTT stream.\nTruth access is separated by code convention on a shared network.\nOne-shot seed configures equipment and room roles; it is omitted from runtime flows." {
+  style.fill: "#fffbeb"
+  style.stroke-dash: 3
+}
