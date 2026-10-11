@@ -131,6 +131,7 @@ the evaluation.
 | Peak CO₂ (ppm) | 1276 | 1002 | 920 |
 | Vent changes | 36 | 17 | 10 |
 | Comfort 20–24 °C (occupied sim-min) | 70 % (A109 63, A117 73) | 69 % (61, 71) | **85 % (A109 87, A117 84)** |
+| Within Folkhälsomyndigheten limits 18–24 °C (`fohm_%`) | 95.6 % | 93.3 % | **99.3 %** |
 | Energy, all rooms: heater + AHU (kWh) | 259.5 | 280.7 (+8 %) | 282.6 (+9 %) |
 
 Other rooms (R8): A110 (fika, no bookings) 28 sim-min > 1000 ppm, comfort 25 %; offices ≈ 80 % comfort.
@@ -161,7 +162,7 @@ start of each run — single runs per variant are therefore indicative, not prec
 1. **The planner result holds** with the new physics: −98 % (persistence) and −100 % (timetable).
 2. **Only the timetable improves comfort** (85 % vs ≈ 70 %): it is the only variant that pre-heats before
    people arrive. Persistence reacts when the room is already full — fine for CO₂, too late for heat.
-3. **FR-02 still fails, narrowly** (85 % < 90 %). The remaining gap is the cold start after the 17 °C
+3. **FR-02 still fails, narrowly** (85 % < 90 %) — but FR-02's 20–24 °C band is a project comfort target, stricter than the official Swedish lower limit (Folkhälsomyndigheten HSLF-FS 2024:10: ≥ 18 °C operative). Against 18–24 °C the final system is within limits **99.3 %** of the occupied time (round 1: 12.5 %). The remaining gap is the cold start after the 17 °C
    setback; a longer timetable-driven pre-heat (the timetable knows lectures hours ahead) is the obvious
    next step.
 4. **The trade-off is now honest and smaller:** +9 % energy for clean air and better comfort, with the
