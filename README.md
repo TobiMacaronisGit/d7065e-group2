@@ -6,8 +6,9 @@ A distributed cyber-physical building-control system on [BuildSim](https://githu
 five rooms on level 0 get fresh air when CO₂ demands it, as little as possible when heating is expensive,
 and *before* the threshold is crossed when the planner sees a lecture coming.
 
-**Start with [`docs/00-overview.md`](docs/00-overview.md)** — what the course requires and what we decided.
-The architecture document (the report's core) lives in [`docs/architecture.md`](docs/architecture.md).
+**Final report (architecture document):** [`docs/final_report.pdf`](docs/final_report.pdf), LaTeX source in [`report/`](report/main.tex).
+The other files in `docs/` are working notes from the project (requirements, interfaces, test plan, results, D2 diagrams);
+where they differ from the report, the report is authoritative.
 
 ## Layout = C4 container diagram = docker-compose.yml
 
@@ -27,7 +28,8 @@ The architecture document (the report's core) lives in [`docs/architecture.md`](
 | `config/` | — | — | `rooms.json`: rooms, devices, physics + control parameters (single source of truth) |
 | `scripts/` | `seed` (one-shot) | — | Compose generation, BuildSim/occupancysim seeding, fault injection |
 | `tests/` | — | — | end-to-end tests against the running stack |
-| `docs/` | — | — | architecture document, requirements, interfaces, test plan, D2 diagrams |
+| `report/` | — | — | final report (LaTeX source and figures) |
+| `docs/` | — | — | final report PDF, working notes (requirements, interfaces, test plan), results, D2 diagrams |
 | `external/` | `buildsim`, `occupancysim` | course infra | unmodified copy of BuildSim + occupancysim from the course repo, so the repo runs on its own (see `external/README.md`) |
 
 ## Run
@@ -58,5 +60,7 @@ scripts/inject_fault.sh A109-co2 stuck      # fault injection, see docs/test-pla
 ```bash
 curl -X POST localhost:8092/compact                          # bronze JSONL → silver Parquet
 python -m planner.train --parquet data/silver/sensor.parquet # needs ≥ 2 simulated days; prints MAE vs baseline
-docker compose restart planner                              # picks up planner/model.json
 ```
+
+The trained linear model lost to the persistence baseline at every horizon (`docs/results/train.txt`) and is therefore
+not deployed: the planner uses the lecture timetable as its forecast, with persistence as the fallback.

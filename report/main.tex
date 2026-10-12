@@ -853,14 +853,16 @@ Next improve comfort and decision quality: extend timetable-driven preheating, u
 Finally complete the outstanding evidence: fixed-schedule energy comparison, repeated matched weekdays, episode-level CO\textsubscript{2} recovery, setback timing, fault/restart recovery, loss checks and scaling to a breaking point. Preserve configuration, seed, model version and run windows with every result. The evidence supports a conditional lecture-room improvement; comfort, unscheduled rooms and operational guarantees remain priorities.
 
 \section*{Contribution statement}\addcontentsline{toc}{section}{Contribution statement}
-\noindent\begin{tabularx}{\linewidth}{lXX}\toprule
-Area & Tobias Hanke & Evangelos Vasilaras\\\midrule
-Architecture   & \fillin{fill in} & \fillin{fill in}\\
-Implementation & \fillin{fill in} & \fillin{fill in}\\
-Testing        & \fillin{fill in} & \fillin{fill in}\\
-Evaluation     & \fillin{fill in} & \fillin{fill in}\\
-Report         & \fillin{fill in} & \fillin{fill in}\\\bottomrule
-\end{tabularx}
+\noindent{\small\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{25mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}\toprule
+Area & Both & Tobias Hanke & Evangelos Vasilaras\\\midrule
+Architecture & Use case and proposal; architecture decisions (service split, MQTT, storage, Python) & -- & C4/D2 diagrams and architecture documentation\\
+Implementation & System setup and bring-up of all containers; Grafana dashboard & Physics and ventilation model changes; timetable planner; history replay fix & --\\
+Testing & Unit tests, end-to-end test, stability run & Fault injection F1, F3, F6 & --\\
+Evaluation & Comparison runs R1--R8; forecast evaluation E5 & -- & --\\
+Report & Writing and revision & Result figures; final revision & First complete LaTeX draft; diagram redrawing\\\bottomrule
+\end{tabularx}}
+
+\smallskip\noindent Most code and parts of the report were generated with AI assistance. Both members defined the use case and architecture decisions, ran and validated the evaluation, and reviewed the results presented in this report.
 
 \appendix
 \section*{Appendix: A117 weekday trace}\addcontentsline{toc}{section}{Appendix: A117 weekday trace}
