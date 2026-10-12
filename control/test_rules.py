@@ -76,3 +76,21 @@ def test_planner_can_raise_but_not_lower():
     c.observe("co2", reading(1050, T0 + timedelta(minutes=1), 2))
     c.set_plan({"sim_ts": T0.isoformat(), "horizon_min": 30, "suggested_vent": 0, "co2_forecast_max_ppm": 500, "suggested_setpoint_c": 17.0})
     assert c.decide(T0 + timedelta(minutes=1)).vent == 2
+
+
+def test_fixed_schedule_baseline_ignores_sensors_and_plans():
+    """E1 baseline (NFR-04): office hours → vent 2 / 21 °C regardless of CO₂ and occupancy; otherwise setback."""
+    c = ctl()
+    morning = T0.replace(hour=7, minute=29)
+    c.observe("occupancy", reading(80, morning))
+    c.observe("co2", reading(1500, morning))                     # would be SAFETY in autonomous mode
+    c.set_plan({"sim_ts": morning.isoformat(), "horizon_min": 30, "suggested_vent": 3,
+                "suggested_setpoint_c": 22.0, "co2_forecast_max_ppm": 1600})
+    d = c.decide_fixed(morning)
+    assert d.state == "SCHEDULE" and d.vent == 0 and d.setpoint_c == 17.0
+    d = c.decide_fixed(T0.replace(hour=7, minute=30))
+    assert d.vent == 2 and d.setpoint_c == 21.0
+    c.observe("occupancy", reading(0, T0))                       # empty room during office hours: still on
+    assert c.decide_fixed(T0.replace(hour=16, minute=59)).vent == 2
+    d = c.decide_fixed(T0.replace(hour=17, minute=0))
+    assert d.vent == 0 and d.setpoint_c == 17.0

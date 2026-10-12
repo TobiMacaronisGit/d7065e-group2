@@ -18,6 +18,10 @@ from datetime import datetime
 from common.timeutil import parse_iso
 from common.schemas import Decision
 
+# E1 / NFR-04 baseline: how a conventionally run building is operated — a timer, no sensors, no planner.
+# Office hours in simulated time (the same clock as the E3 window 07:30–18:00), see docs/test-plan.md E1.
+FIXED_SCHEDULE = {"on": "07:30", "off": "17:00", "vent": 2, "setpoint_c": 21.0}
+
 
 @dataclass
 class Observation:
@@ -131,6 +135,32 @@ class RoomController:
                          "temp": self.temp.value if self.temp else None,
                          "occupancy": self.occ.value if occ_known else None,
                          "plan_vent": self.plan["suggested_vent"] if plan_ok else None},
+                        now.isoformat(timespec="seconds"))
+
+    def decide_fixed(self, now: datetime, schedule: dict = FIXED_SCHEDULE) -> Decision:
+        """Baseline for E1 (CONTROL_MODE=fixed-schedule): vent level and comfort setpoint during office
+        hours, minimum ventilation and setback outside them. Ignores CO₂, occupancy and plans on purpose —
+        it is the reference the autonomous system must beat on energy (NFR-04), not a controller to use."""
+        on_h, on_m = (int(x) for x in schedule["on"].split(":"))
+        off_h, off_m = (int(x) for x in schedule["off"].split(":"))
+        minute = now.hour * 60 + now.minute
+        office = on_h * 60 + on_m <= minute < off_h * 60 + off_m
+        c = self.cfg
+        if office:
+            vent, setpoint = int(schedule["vent"]), float(schedule["setpoint_c"])
+            reason = f"fixed schedule {schedule['on']}–{schedule['off']}: vent {vent}, {setpoint:g} °C"
+        else:
+            vent, setpoint = int(c["vent_min_level"]), float(c["setpoint_empty_c"])
+            reason = f"fixed schedule: outside {schedule['on']}–{schedule['off']} → vent {vent}, setback {setpoint:g} °C"
+        vent = max(int(c["vent_min_level"]), min(self.vent_max, vent))     # REG-01 clamp still applies
+        if vent != self.vent or setpoint != self.setpoint:
+            self.last_change = now
+        self.vent, self.setpoint, self.state = vent, setpoint, "SCHEDULE"
+        return Decision(self.level, self.room, "SCHEDULE", vent, setpoint, reason,
+                        {"co2": self.co2.value if self.co2 else None, "co2_quality": self.co2_quality(now),
+                         "temp": self.temp.value if self.temp else None,
+                         "occupancy": self.occ.value if self._fresh(self.occ, now) else None,
+                         "plan_vent": None},
                         now.isoformat(timespec="seconds"))
 
 

@@ -70,10 +70,10 @@ Legend: ✅ met · ⚠️ partly met · ❌ not done · — not required for the
 |---|---|---|
 | 3 | What was tested, how, results; component and end-to-end tests | ✅ |
 | 4 | Quantitative evaluation against requirements; fault injection tied to design decisions | ✅ R6–R8, MAE table, F1/F3/F6 |
-| 5 | Stress test / breaking point; energy and trade-off analysis | ❌ E1 (fixed-schedule baseline) and E4 (scaling) not executed |
+| 5 | Stress test / breaking point; energy and trade-off analysis | ⚠️ E1 executed (R9: −37 % energy against a fixed schedule, with the CO₂/comfort trade-off analysed); E4 (scaling) not executed |
 
 **Reading for the target grade:** all pass/fail items are met. The report supports grade 3 safely and grade 4
-plausibly; grade 5 would need E1/E4.
+plausibly; grade 5 would mainly need E4.
 
 ## 3. Report Guide / Template — section checklist
 
@@ -93,7 +93,7 @@ plausibly; grade 5 would need E1/E4.
 | 8 Behaviour | ≥ 1 sequence diagram + ≥ 1 state machine incl. network drop and recovery | ✅ |
 | 9 Deployment | Deployment diagram; placement, fault isolation, resources; edge vs. external compute | ✅ |
 | 10 Test plan | Every requirement → verification + evidence; unit, E2E, fault injection | ✅ |
-| 11 Evaluation | Measured metrics, response-over-time plot, baseline comparison, honest critique | ✅ (no fixed-schedule baseline, see D5) |
+| 11 Evaluation | Measured metrics, response-over-time plot, baseline comparison, honest critique | ✅ (fixed-schedule baseline R9 included) |
 | 12 Dashboard | What it shows, screenshot | ✅ |
 | 13 Risks & reflection | Weaknesses, assumptions, trade-offs, next steps | ✅ |
 | — | Contribution statement (pair projects) | ✅ |

@@ -43,7 +43,7 @@ from the pipeline (`/query`), not from logs, so they are reproducible.
 **Executed 10 Oct 2026 (live):** S1 (= run R5), E3 as three variants — off (R1), persistence (R4),
 timetable (R5) — and E5. Results: [`results/e3-summary.md`](results/e3-summary.md),
 [`results/e3-results.md`](results/e3-results.md), [`results/train.txt`](results/train.txt).
-Runs R2/R3 are invalid (history-window bug, fixed and documented in the summary). E1, E2, E4 not executed.
+Runs R2/R3 are invalid (history-window bug, fixed and documented in the summary). E2, E4 not executed. **E1 executed 12 Oct (live, R9 against R6–R8):** [`results/e1-results.md`](results/e1-results.md), prediction in [`results/e1-predictions.md`](results/e1-predictions.md).
 **Fault injection executed 11 Oct (live):** F1, F3 (control and vent actuator), F6 — results in
 [`results/faults.txt`](results/faults.txt) and `architecture.md` §10.3. F2, F4, F5, F7 not executed.
 
