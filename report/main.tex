@@ -395,7 +395,7 @@ Recovered exhaust heat reduces the AHU's supply-heating requirement:
 T_{\mathrm{rec}}&=T_o+\eta(T-T_o),\\
 P_{\mathrm{AHU}}&=\rho c_pQ_m\max(0,T_s-T_{\mathrm{rec}}).
 \end{align}
-Radiator and AHU energy are integrated over simulated time and reported in kWh as \protect\path{energy_kwh} (radiator only) and \protect\path{total_kwh} (radiator plus AHU); all comparisons use \protect\path{total_kwh}. The model omits active cooling and fan electricity.
+Radiator and AHU energy are integrated over simulated time and reported in kWh as \texttt{energy\_kwh} (radiator only) and \protect\path{total_kwh} (radiator plus AHU); all comparisons use \protect\path{total_kwh}. The model omits active cooling and fan electricity.
 
 \paragraph{Weather and numerical update.}
 Outdoor temperature follows a synthetic seasonal and daily cosine. Its daily phase is inverted, coldest at 15:00 and warmest at 03:00. This is a known defect: all variants face the same weather, but absolute energy and the size of the differences between variants could change with a realistic daily cycle. Physics starts at 420 ppm and 19 $^\circ$C, polls its inputs every two wall seconds and integrates the balances with explicit Euler steps of at most 30 simulated seconds; with clock factor $f$, one wall second advances $f$ simulated seconds. If BuildSim fails, physics continues with the last known occupancy and actuator states, which may then be outdated.
@@ -444,7 +444,7 @@ A failed history request prevents new plans but leaves reactive control running.
 
 \subsection{The data pipeline}\label{sec:pipeline}
 \paragraph{Ingestion and storage.}
-Pipeline subscribes to \protect\path{bldg/\#} and \protect\path{sys/health/\#}, classifies sensor, actuator, plan, decision and health events, and appends topic plus wall receipt timestamp \protect\path{recv_ts}. Commands and reached states share the actuator stream. QoS 1 and persistent consumer sessions support short-outage replay subject to broker limits. Reactive control consumes MQTT independently of storage.
+Pipeline subscribes to \protect\path{bldg/#} and \protect\path{sys/health/#}, classifies sensor, actuator, plan, decision and health events, and appends topic plus wall receipt timestamp \texttt{recv\_ts}. Commands and reached states share the actuator stream. QoS 1 and persistent consumer sessions support short-outage replay subject to broker limits. Reactive control consumes MQTT independently of storage.
 
 Raw events are appended as JSONL files (the ``bronze'' layer) at \protect\path{/data/bronze/<sim-date>/<kind>.jsonl}; the date uses simulated time where available and wall time otherwise. A host bind mount preserves files through container restarts. Every 300 wall seconds, or on POST \protect\path{/compact}, DuckDB compacts them into one Parquet file per event kind (the ``silver'' layer). No automatic retention, quota or expiry is configured.
 
@@ -676,6 +676,7 @@ Both planner variants exceed FR-04's 50\% reduction criterion for the two lectur
 \paragraph{Fixed-schedule baseline (E1, NFR-04).}
 R9 repeats the same simulated day with the controller replaced by a timer (\texttt{CONTROL\_MODE=fixed-schedule}): ventilation level 2 and 21 $^\circ$C from 07:30 to 17:00, level 0 and 17 $^\circ$C otherwise, without sensors or plans; the planner was stopped. Its occupied lecture minutes (476) match R6--R8 (465--475), so the conditions are comparable. The baseline used 445.8 kWh, 58\% more than R8 (282.6 kWh); the final system therefore needs 37\% less energy, and NFR-04 is met in the model. Radiators account for 104 kWh of the difference, mainly in rooms that stay heated while empty (A109 after its only lecture: +56 kWh), and AHU supply-air heating for 59 kWh, because every room is ventilated at level 2 for 9.5 simulated hours. The baseline was not worse for air quality: it also had zero lecture-room exceedances (peak 917 ppm), contrary to the prediction we recorded before the run. This indicates that R6's exceedances come from the reactive rules (a lecture starts at level 0, ventilation rises only after CO\textsubscript{2} does, and the threshold cycle described below), not from insufficient level-2 capacity; the timer is already at level 2 when students arrive, which is the effect the planner reproduces. Heating from 07:30 also gave the timer 96.4\% lecture comfort, which would meet FR-02. In the fika room it had fewer exceedance minutes (6 against 28) but a higher peak (1380 ppm), as it has no safety override. Against a conventional schedule, the autonomous system's benefit is therefore energy, paid for with lower comfort; timetable-driven preheating is the most direct improvement. One run per variant and our own choice of schedule (level 2, 07:30--17:00) make the 37\% specific to this scenario.
 
+\needspace{9\baselineskip}
 \paragraph{Whole-building limits.}\mbox{}\par
 \noindent\begin{tabularx}{\linewidth}{lrrrX}\toprule R8 room & Exceed sim-min & Peak ppm & Comfort (\%) & Heat + AHU (kWh)\\\midrule
 A109 & 0 & 920 & 87.4 & 75.2\\
