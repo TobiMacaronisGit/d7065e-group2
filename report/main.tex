@@ -398,7 +398,7 @@ It can return:
   "ts":"2026-10-10T08:00:00.000+00:00",
   "value":1042.0,"seq":381,"quality":"ok"}]
 \end{verbatim}}
-With \texttt{until}, the inclusive simulated window is $[t_{\mathrm{until}}-\mathrm{minutes},t_{\mathrm{until}}]$; \protect\path{max_age_s} additionally requires receipt time no earlier than wall-now minus that age. The planner supplies both parameters. This reduces cross-replay contamination but is not explicit run identity. The query API exposes bronze views named sensor, actuator, plan, decision and health. Its SELECT/WITH prefix check is not a complete SQL security sandbox.
+With \texttt{until}, the inclusive simulated window is $[t_{\mathrm{until}}-\mathrm{minutes},t_{\mathrm{until}}]$; \protect\path{max_age_s} additionally requires receipt time no earlier than wall-now minus that age. The planner supplies both parameters. This reduces cross-replay contamination but is not explicit run identity. The query API exposes views named sensor, actuator, plan, decision and health that combine silver Parquet with the bronze rows received since the last compaction, so queries see live data without rescanning all of bronze. Its SELECT/WITH prefix check is not a complete SQL security sandbox.
 
 \section{Simulating the sensor values (the physical model)}
 \paragraph{Occupancy source and model choice.}
@@ -526,14 +526,14 @@ Pipeline subscribes to \protect\path{bldg/\#} and \protect\path{sys/health/\#}, 
 Bronze storage is append-only JSONL at \protect\path{/data/bronze/<sim-date>/<kind>.jsonl}; the date uses simulated time where available and wall time otherwise. A host bind mount preserves files through container restarts. Every 300 wall seconds, or on POST \protect\path{/compact}, DuckDB scans bronze and rewrites silver Parquet per event kind. No automatic retention, quota or expiry is configured.
 
 \paragraph{Windows, processing and consumers.}
-History reads bronze immediately, so the planner need not wait for compaction. The planner bounds each query by its current simulated time and the wall-clock receipt age; explicit run identity would isolate replayed runs more cleanly.
+History reads the bronze files of the simulated dates around its window, so the planner need not wait for compaction. The planner bounds each query by its current simulated time and the wall-clock receipt age; explicit run identity would isolate replayed runs more cleanly.
 
 Planner constructs its own resampled occupancy features. Training reads silver, Grafana Infinity reads JSON query responses, and stored decisions expose the inputs and reasons used. Physics keeps radiator/AHU counters in memory; the recorded evaluation separately captured end-of-run counters after a reset.
 
 \paragraph{Quality, deduplication and scaling.}
 The MQTT wrapper rejects malformed JSON, but storage has no universal semantic schema validation. Control handles stale/repeated CO\textsubscript{2}; pipeline does not emit a separate frozen flag. Full-row DISTINCT during compaction does not remove retransmissions with different receipt times. Producer-local sequences reset without session IDs. Mosquitto queues cap at 10,000 messages per client, persistence autosaves every 30 wall seconds, and producers have no disk outbox. Consequently no-loss recovery cannot be inferred from QoS 1.
 
-The query API caps responses at 10,000 rows and uses a SELECT/WITH prefix guard rather than a complete SQL sandbox. History queries, SQL queries and compaction share one lock and a 256 MB DuckDB memory limit; this bounds scan memory but not total process memory, and full-history scans still grow with retained data. The stability snapshots predate this limiter, and no load test was run afterwards. Bounded retention, event IDs and incremental partitions are the next steps.
+The query API caps responses at 10,000 rows and uses a SELECT/WITH prefix guard rather than a complete SQL sandbox. History queries, SQL queries and compaction share one lock and a 256 MB DuckDB memory limit; this bounds scan memory but not total process memory. On 12 October the shared lock became the bottleneck: every SQL and history query re-read all bronze JSONL (4--5\,s at about 1.7\,M rows), the planner's 15 history calls per 10-s cycle kept the lock busy, and Grafana panels timed out. SQL queries now combine silver with the bronze rows received since the last compaction, and history scans only the bronze files of nearby simulated dates; with the planner running, a query then took 60--115\,ms and returned rows under one second old. If that recent tail cannot be read, the request falls back to silver only. Compaction still rebuilds silver from all of bronze (8.4\,s at about 1.8\,M rows) and holds the lock meanwhile. The stability snapshots predate these changes. Bounded retention, event IDs and incremental partitions are the next steps.
 
 \section{Behaviour}
 \subsection{Key scenario (dynamic diagram)}
