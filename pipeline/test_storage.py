@@ -1,5 +1,6 @@
 """Unit tests for the storage layer (run: pytest pipeline/)."""
 import json
+import time
 from datetime import datetime, timedelta, timezone
 
 from pipeline.storage import Storage
@@ -66,3 +67,35 @@ def test_history_until_reads_only_nearby_days_and_crosses_midnight(tmp_path):
     assert not any("2026-10-01" in f for f in files)
     h = s.history("A109", "co2", minutes=60, until="2026-10-22T00:30:00+00:00", max_age_s=600)
     assert [r["value"] for r in h] == [2340, 10]
+
+
+def _co2(s, i, value=None):
+    s.append("sensor", "bldg/level0/A109/sensor/co2",
+             {"sensor_id": "A109-co2", "level": "level0", "room": "A109", "type": "co2", "unit": "ppm",
+              "value": 600 + i if value is None else value, "sim_ts": f"2026-09-21T10:{i:02d}:00+00:00",
+              "ts": f"2026-09-21T08:00:{i:02d}+00:00", "seq": i, "quality": "ok"})
+
+
+def test_query_is_live_between_compactions(tmp_path):
+    """/query = silver + bronze rows since the last compaction: new readings appear without waiting for compact()."""
+    s = Storage(str(tmp_path))
+    for i in range(5):
+        _co2(s, i)
+    assert s.compact()["sensor"] == 5
+    time.sleep(0.01)                                   # recv_ts has millisecond resolution
+    for i in range(5, 8):
+        _co2(s, i)
+    assert s.query("SELECT count(*) AS n, max(value) AS top FROM sensor") == [{"n": 8, "top": 607}]
+    assert s.compact()["sensor"] == 8                  # next compaction absorbs the tail ...
+    assert s.query("SELECT count(*) AS n FROM sensor") == [{"n": 8}]   # ... without duplicates
+
+
+def test_query_survives_a_tail_row_that_does_not_fit_silver(tmp_path):
+    """A bronze row whose type differs from silver must not break /query (falls back to silver if needed)."""
+    s = Storage(str(tmp_path))
+    for i in range(3):
+        _co2(s, i)
+    s.compact()
+    time.sleep(0.01)
+    _co2(s, 3, value="n/a")
+    assert s.query("SELECT count(*) AS n FROM sensor")[0]["n"] >= 3
