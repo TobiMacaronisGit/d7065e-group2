@@ -50,3 +50,19 @@ def test_history_until_ignores_a_replayed_day(tmp_path):
     # fixed: anchored at our own sim time, rows of this run only
     h = s.history("A109", "occupancy", minutes=5, until="2026-10-21T08:00:00+00:00", max_age_s=600)
     assert [r["value"] for r in h] == [100, 101, 102]
+
+
+def test_history_until_reads_only_nearby_days_and_crosses_midnight(tmp_path):
+    """history(until=...) scans only the sim-dates around the window, but still finds rows on both sides of midnight."""
+    s = Storage(str(tmp_path))
+    now = datetime.now(timezone.utc).isoformat()
+    for sim in ["2026-10-01T23:50:00+00:00",                                  # far away: must not be scanned or returned
+                "2026-10-21T23:40:00+00:00", "2026-10-22T00:10:00+00:00",   # inside the 60-min window
+                "2026-10-22T00:40:00+00:00"]:                                # after `until`
+        s.append("sensor", "t", {"sensor_id": "A109-co2", "level": "level0", "room": "A109", "type": "co2",
+                                 "unit": "ppm", "value": int(sim[11:13] + sim[14:16]), "sim_ts": sim, "ts": now,
+                                 "seq": 0, "quality": "ok"})
+    files = s._sensor_files("2026-10-22T00:30:00+00:00", 60)
+    assert not any("2026-10-01" in f for f in files)
+    h = s.history("A109", "co2", minutes=60, until="2026-10-22T00:30:00+00:00", max_age_s=600)
+    assert [r["value"] for r in h] == [2340, 10]
