@@ -23,6 +23,9 @@ import duckdb
 log = logging.getLogger("storage")
 
 KINDS = ("sensor", "actuator", "plan", "decision", "health")
+# bronze files touched up to this long before the last compaction are re-read for the live tail of /query;
+# generous on purpose (a compaction takes seconds), rows already in silver are filtered out by recv_ts
+FRESH_MARGIN_S = 600.0
 
 
 class Storage:
@@ -152,22 +155,54 @@ class Storage:
             day += timedelta(days=1)
         return files
 
+    def _views(self, con: duckdb.DuckDBPyConnection, live: bool = True) -> None:
+        """Create the views sensor, actuator, plan, decision, health for one /query request.
+
+        Each view is silver Parquet plus, when `live`, the bronze rows that arrived after the last
+        compaction. Only bronze files touched since that compaction are read, so the tail is one or two
+        files, and it is parsed with the Parquet schema, so both halves have identical column types.
+        A kind without Parquet yet (fresh start) is read from bronze directly."""
+        for kind in KINDS:
+            silver = self.root / "silver" / f"{kind}.parquet"
+            bronze = sorted((self.root / "bronze").glob(f"*/{kind}.jsonl"))
+            if not silver.exists():
+                if bronze:
+                    glob = str(self.root / "bronze" / "*" / f"{kind}.jsonl")
+                    con.execute(f"CREATE OR REPLACE VIEW {kind} AS "
+                                f"SELECT * FROM read_json_auto('{glob}', union_by_name=true)")
+                continue
+            body = f"SELECT * FROM read_parquet('{silver}')"
+            since = silver.stat().st_mtime - FRESH_MARGIN_S
+            fresh = [f for f in bronze if f.stat().st_mtime >= since] if live else []
+            if fresh:
+                schema = con.execute(f"DESCRIBE {body}").fetchall()
+                cols = ", ".join("'{}': '{}'".format(r[0].replace("'", "''"), r[1].replace("'", "''")) for r in schema)
+                files = ", ".join(f"'{f}'" for f in fresh)
+                body += (f" UNION ALL BY NAME SELECT * FROM read_json([{files}], columns={{{cols}}}, "
+                         f"format='newline_delimited', ignore_errors=true) "
+                         f"WHERE recv_ts > (SELECT max(recv_ts) FROM read_parquet('{silver}'))")
+            con.execute(f"CREATE OR REPLACE VIEW {kind} AS {body}")
+
+    def _run(self, con: duckdb.DuckDBPyConnection, sql: str, live: bool) -> list[dict[str, Any]]:
+        self._views(con, live)
+        cur = con.execute(sql)
+        cols = [d[0] for d in cur.description]
+        return [dict(zip(cols, row)) for row in cur.fetchmany(10000)]
+
     def query(self, sql: str) -> list[dict[str, Any]]:
-        """Read-only SQL for Grafana (Infinity) and ad-hoc analysis.
-        Tables are exposed as views: sensor, actuator, plan, decision, health over silver/<kind>.parquet,
-        so they are up to one compaction interval (COMPACT_S) behind live. A kind without a parquet file
-        yet falls back to bronze. Found 12 Oct: scanning all bronze JSONL per request took 4-5 s at
-        ~700k rows, and behind _query_lock the Grafana panels queued up into Infinity timeouts."""
+        """Read-only SQL for Grafana (Infinity) and ad-hoc analysis, live and fast.
+
+        Views = silver Parquet + the bronze rows since the last compaction (see _views), so Grafana shows
+        a reading as soon as the pipeline has it. History (12 Oct): views over *all* bronze JSONL took
+        4-5 s per request at ~1.7 M rows and, behind _query_lock, queued the Grafana panels into Infinity
+        timeouts; silver-only views were fast but up to COMPACT_S (300 s wall, ~5 sim-h) behind.
+        If the live tail fails (e.g. a bronze row that does not fit the silver schema), the request is
+        answered from silver only and the error is logged; the next compaction absorbs the row."""
         if not sql.strip().lower().startswith(("select", "with")):
             raise ValueError("read-only endpoint: only SELECT/WITH queries are allowed")
         with self._connection() as con:
-            for kind in KINDS:
-                silver = self.root / "silver" / f"{kind}.parquet"
-                glob = str(self.root / "bronze" / "*" / f"{kind}.jsonl")
-                if silver.exists():
-                    con.execute(f"CREATE VIEW {kind} AS SELECT * FROM read_parquet('{silver}')")
-                elif list((self.root / "bronze").glob(f"*/{kind}.jsonl")):
-                    con.execute(f"CREATE VIEW {kind} AS SELECT * FROM read_json_auto('{glob}', union_by_name=true)")
-            cur = con.execute(sql)
-            cols = [d[0] for d in cur.description]
-            return [dict(zip(cols, row)) for row in cur.fetchmany(10000)]
+            try:
+                return self._run(con, sql, live=True)
+            except duckdb.Error as e:
+                log.warning("query: live bronze tail failed, answering from silver only: %s", e)
+                return self._run(con, sql, live=False)

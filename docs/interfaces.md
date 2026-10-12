@@ -115,8 +115,8 @@ Rules that bite: values and states are **strings**; rooms are keyed `level0/A109
 |---|---|---|
 | all | `GET /healthz` | `{service, status, …}` — also the Compose healthcheck |
 | `physics` | `GET /rooms`, `GET /rooms/{room}` | ground truth: `co2_ppm`, `temp_c`, `occupants`, `vent_level`, `setpoint_c`, `energy_kwh`, `t_out_c` |
-| `pipeline` | `GET /history?room&type&minutes[&level]` | recent readings, oldest first |
-| `pipeline` | `GET /query?sql=SELECT …` | read-only DuckDB over views `sensor, actuator, plan, decision, health` (SELECT/WITH only) |
+| `pipeline` | `GET /history?room&type&minutes[&level][&until&max_age_s]` | recent readings from live bronze (with `until`: only the sim-dates around the window), oldest first |
+| `pipeline` | `GET /query?sql=SELECT …` | read-only DuckDB over views `sensor, actuator, plan, decision, health` = silver Parquet + the bronze rows since the last compaction, i.e. live (SELECT/WITH only) |
 | `pipeline` | `GET /stats`, `POST /compact` | row counts; rebuild silver Parquet |
 | `control` | `GET /decisions` | last decision per room |
 | `planner` | `GET /plans` | last plan per room |

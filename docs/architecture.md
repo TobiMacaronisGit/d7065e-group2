@@ -173,6 +173,7 @@ Full table with alternatives and trade-offs: [`decision-log.md`](decision-log.md
 | D-10 | Time authority | occupancysim's clock; every message carries `ts` and `sim_ts` |
 | D-11 | Room selection | A109, A117 lecture; A110 fika; A323, A113C offices; roles overridden |
 | D-12 | Physics | One container for all rooms |
+| D-13 | Dashboard data path | `/query` = silver Parquet + bronze rows since the last compaction (live, ~0.1 s); `/history` reads only the bronze days around its window |
 
 Three decisions showed their consequences only once the system was built:
 
@@ -330,10 +331,15 @@ minutes). It prints the mean absolute error per horizon for the model and for pe
 arrived, `data/bronze/<sim-date>/<kind>.jsonl`) → silver Parquet (typed, de-duplicated, via DuckDB,
 rebuilt every 300 s and on demand) → gold (training and evaluation tables).
 Each row keeps the producer's `ts` and `sim_ts` plus the pipeline's `recv_ts`, so per-hop latency is
-measurable rather than asserted. `/history` and `/query` read the live bronze files, so they are always
-fresh; silver is for training. The pipeline uses a persistent session, so after a short outage the broker
-delivers what it missed, and Grafana reads the same data through `/query` with the Infinity plugin: four
-panels (CO₂, temperature, ventilation level with occupancy, latest decisions with reasons).
+measurable rather than asserted. `/history` reads the live bronze files of the sim-dates around its
+window, so the planner always sees fresh readings and never waits for compaction. `/query` serves views
+that combine silver with the bronze rows received since the last compaction, so Grafana is live without
+re-reading all of bronze (D-13). Until 12 Oct both endpoints re-read all of bronze on every request: at
+~1.7 M rows a call took 4–5 s, the planner's 15 `/history` calls per 10 s cycle kept the shared query lock
+busy, and the Grafana panels timed out. Now a query takes 60–115 ms with the planner running, and its
+newest row is under a second old. The pipeline uses a persistent session, so after a short outage the
+broker delivers what it missed. Grafana uses `/query` through the Infinity plugin: four panels (CO₂,
+temperature, ventilation level with occupancy, latest decisions with reasons).
 
 ---
 

@@ -12,6 +12,7 @@ Collected 10 Oct 2026 from the work log and `docs/results/`. Each line: what cha
 | Pipeline `/history` | window anchored at the caller's sim time (`until`, `max_age_s`) | bug found during E3: replayed days returned another run's data (invalidated R2/R3) |
 | Grafana | 11.2.0 → **12.3.0**, Infinity plugin pinned to 4.1.1 | the unpinned plugin required a newer Grafana (`react/jsx-runtime` 404) |
 | Pipeline image | `pytz` added | DuckDB TIMESTAMPTZ queries failed without it (Grafana panels empty) |
+| Pipeline reads | `/query` views = **silver Parquet + bronze rows since the last compaction**; `/history` scans only the bronze days around its window (D-13) | 12 Oct: Grafana panels timed out; every call re-read all bronze (4–5 s at ~1.7 M rows) behind one query lock that the planner held 15× per 10 s cycle. After: 60–115 ms per query, newest row under 1 s old |
 | Control mode | `CONTROL_MODE=fixed-schedule` (timer: vent 2 + 21 °C 07:30–17:00) | needed as the reference for NFR-04; run as R9 (E1, 12 Oct): −37 % energy for the final system (`results/e1-results.md`) |
 | Experiments not executed | E2, E4, F2, F4, F5, F7 (see `test-plan.md`) | time; listed as limitations / future work |
 

@@ -15,7 +15,7 @@ critique. The experiments in §3 are designed for that, not for showing the happ
 | `physics/test_model.py` | CO₂ rises with people and falls with ventilation; ventilation costs heating energy at −15 °C; heating is gradual and bounded; outdoor temperature is seasonal | the model behind FR-01/FR-02/NFR-04 |
 | `control/test_rules.py` | reactive levels, SAFETY override, hysteresis (margin **and** dwell), frozen-sensor → DEGRADED, stale CO₂ not trusted, planner may raise but never lower | FR-01, FR-03, FR-04, NFR-03, NFR-05, REG-01 |
 | `actuator/test_validate.py` | issuer / range / staleness / type rejection; rate-limited travel | SAF-01 |
-| `pipeline/test_storage.py` | bronze append, history window, compaction to Parquet, read-only query guard | FR-05, NFR-07 |
+| `pipeline/test_storage.py` | bronze append, history window, history reads only the sim-dates around its window (also across midnight), compaction to Parquet, `/query` live between compactions and without duplicates after the next one, a tail row that does not fit silver does not break `/query`, read-only query guard | FR-05, NFR-07 |
 | `planner/test_forecast.py` | feature vector shape, persistence baseline, least-squares recovers a known linear rule, pre-ventilation before a forecast lecture | FR-04 |
 
 ## 2. Integration / end-to-end — `pytest -m e2e` against `docker compose up`
@@ -24,7 +24,7 @@ critique. The experiments in §3 are designed for that, not for showing the happ
 |---|---|---|
 | E2E-1 | `tests/e2e/test_loop.py` — publish a ventilation command, follow it through | actuator applies it → BuildSim shows the reached state → `physics` reads that state back → the next CO₂ readings reflect it. **This is the pass/fail "the loop closes" evidence.** |
 | E2E-2 | scenario run S1 (below), asserted from the pipeline afterwards | FR-01/02/03 thresholds hold over a full simulated day |
-| E2E-3 | **Stability run**: full stack (30 containers) left running, `docker inspect … RestartCount` + `docker stats --no-stream` at start and end | no container restarts or enters a restart loop. **Executed 10 Oct 2026:** ≈ 93 min (core containers since ≈ 11:51, snapshots 12:33 and 13:25), **0 restarts in all 30 containers**, total RAM ≈ 1.3 GiB; pipeline RSS grew 87 → 116 MiB (every `/query` re-reads all bronze JSONL). Raw output: [`results/stability.txt`](results/stability.txt). **Also observed 11 Oct:** all 30 containers up 19 h without a restart (`docker compose ps` before the fault tests) |
+| E2E-3 | **Stability run**: full stack (30 containers) left running, `docker inspect … RestartCount` + `docker stats --no-stream` at start and end | no container restarts or enters a restart loop. **Executed 10 Oct 2026:** ≈ 93 min (core containers since ≈ 11:51, snapshots 12:33 and 13:25), **0 restarts in all 30 containers**, total RAM ≈ 1.3 GiB; pipeline RSS grew 87 → 116 MiB (at the time every `/query` re-read all bronze JSONL; changed 12 Oct, D-13). Raw output: [`results/stability.txt`](results/stability.txt). **Also observed 11 Oct:** all 30 containers up 19 h without a restart (`docker compose ps` before the fault tests) |
 
 ## 3. Scenario runs and experiments (the evidence for §11 of the report)
 

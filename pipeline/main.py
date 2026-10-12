@@ -7,7 +7,7 @@ when it comes back, the broker's persistent session delivers what it missed (QoS
 HTTP API (also used by Grafana via the Infinity plugin and by planner/train.py):
     GET /history?room=A109&type=co2&minutes=120     recent readings of one sensor
         [&until=<sim ISO>&max_age_s=<wall s>]       window ends at `until`, rows of this run only
-    GET /query?sql=SELECT ...                        read-only DuckDB over the silver (parquet) views
+    GET /query?sql=SELECT ...                        read-only DuckDB: silver parquet + live bronze tail
     GET /stats                                       row counts, last compaction
     POST /compact                                    rebuild silver parquet now
 """
