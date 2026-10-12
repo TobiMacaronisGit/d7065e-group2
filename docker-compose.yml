@@ -107,6 +107,7 @@ services:
       MQTT_HOST: broker
       OCCUPANCY_URL: http://occupancysim:8081
       EVAL_S: "5"
+      CONTROL_MODE: ${CONTROL_MODE:-autonomous}   # fixed-schedule = E1 baseline (NFR-04)
     ports: ["127.0.0.1:8091:8000"]
     depends_on:
       broker: {condition: service_healthy}

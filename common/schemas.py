@@ -88,7 +88,7 @@ class Plan:
 class Decision:
     level: str
     room: str
-    state: str          # NORMAL | DEGRADED | SAFETY | NO_DATA
+    state: str          # NORMAL | DEGRADED | SAFETY | NO_DATA (SCHEDULE only in the E1 baseline mode)
     vent: int
     setpoint_c: float
     reason: str
