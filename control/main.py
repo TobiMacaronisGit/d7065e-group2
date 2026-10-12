@@ -23,6 +23,9 @@ from control.rules import RoomController
 log = logging.getLogger("control")
 
 EVAL_S = float(config.env("EVAL_S", "5"))
+MODE = config.env("CONTROL_MODE", "autonomous")     # autonomous | fixed-schedule (E1 baseline, NFR-04)
+if MODE not in ("autonomous", "fixed-schedule"):
+    raise RuntimeError(f"CONTROL_MODE must be autonomous or fixed-schedule, not {MODE!r}")
 
 
 class Control:
@@ -59,7 +62,8 @@ class Control:
         now = self.clock.now()
         for r in self.rooms:
             with self._lock:
-                d = self.ctl[r.name].decide(now)
+                c = self.ctl[r.name]
+                d = c.decide_fixed(now) if MODE == "fixed-schedule" else c.decide(now)
             self.last_decisions[r.name] = d.to_dict()
             self.bus.publish(topics.decision(self.level, r.name), d.to_dict())
             self._command(r.name, "vent", float(d.vent), d.reason, d.sim_ts)
@@ -93,9 +97,10 @@ class Control:
 def main() -> None:
     setup_logging()
     ctl = Control()
-    log.info("control for %s every %ss", [r.name for r in ctl.rooms], EVAL_S)
+    log.info("control (%s) for %s every %ss", MODE, [r.name for r in ctl.rooms], EVAL_S)
     run_in_thread(ctl.run, "control-loop")
-    app = make_app("control", lambda: {"status": "ok", "rooms": {k: v["state"] for k, v in ctl.last_decisions.items()}})
+    app = make_app("control", lambda: {"status": "ok", "mode": MODE,
+                                       "rooms": {k: v["state"] for k, v in ctl.last_decisions.items()}})
 
     @app.get("/decisions")
     def decisions():

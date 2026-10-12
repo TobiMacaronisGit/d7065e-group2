@@ -66,7 +66,7 @@
 \section{Summary}
 The system autonomously regulates ventilation and heating in five simulated rooms on level 0 of the A-house. Occupants generate CO\textsubscript{2}; fresh air removes it but also creates a heating demand. Separate sensor, controller and actuator processes close this feedback loop through MQTT and BuildSim. A reactive controller provides threshold-based responses, while an advisory planner uses lecture bookings to anticipate occupancy over 30 simulated minutes. The planner reads observed history, rather than physical ground truth, and its suggestions can raise the reactive ventilation request. JSONL/Parquet storage supports history, audit and evaluation; BuildSim overlays and Grafana expose the resulting conditions and decisions. The guiding principle is that the reactive loop always keeps rooms safe on its own, while forecasting may only add ventilation or preheating, never remove it.
 
-The current implementation adds 18 $^\circ$C mechanical supply air, 75\% heat recovery and separate air-handling-unit (AHU) energy accounting. Recorded final-configuration runs show a concrete trade-off: timetable planning reduced occupied lecture-room CO\textsubscript{2} exceedances from 122 to zero simulated minutes, increased lecture-room comfort from 70.2\% to 84.7\%, and raised all-room radiator-plus-AHU energy from 259.5 to 282.6 kWh. These results come from one simulated weekday with one run per variant. The 90\% comfort requirement remains unmet; the fika room still has exceedances, and the fixed-schedule energy baseline has not been evaluated.
+The current implementation adds 18 $^\circ$C mechanical supply air, 75\% heat recovery and separate air-handling-unit (AHU) energy accounting. Recorded final-configuration runs show a concrete trade-off: timetable planning reduced occupied lecture-room CO\textsubscript{2} exceedances from 122 to zero simulated minutes, increased lecture-room comfort from 70.2\% to 84.7\%, and raised all-room radiator-plus-AHU energy from 259.5 to 282.6 kWh. These results come from one simulated weekday with one run per variant. Against a fixed-schedule baseline (R9: ventilation level 2 and 21 $^\circ$C from 07:30 to 17:00), the final system used 37\% less energy (282.6 against 445.8 kWh), so NFR-04 is met in the model. The timer, however, also kept the lecture rooms below 1000 ppm and reached 96.4\% comfort, so the autonomous system's advantage is energy, not air quality or comfort. Its 90\% comfort requirement remains unmet, and the fika room still has exceedances.
 
 \noindent\begin{tabularx}{\linewidth}{lX}\toprule Field & Value\\\midrule
 Project & CO\textsubscript{2}-driven ventilation with thermal trade-off\\
@@ -74,7 +74,7 @@ Team & Group 2: Tobias Hanke; Evangelos Vasilaras\\
 Scope & A109, A117, A110, A323 and A113C on level 0\\
 Repository & \url{https://github.com/TobiMacaronisGit/d7065e-group2}\\
 Version & Branch \texttt{main} at submission, 12 October 2026\\
-Evidence & \protect\path{docs/results/}: \protect\path{unit-tests.txt}, \protect\path{e2e.txt}, \protect\path{faults.txt}, \protect\path{e3-results.md}, \protect\path{e3-summary.md}, \protect\path{train.txt}\\\bottomrule
+Evidence & \protect\path{docs/results/}: \protect\path{unit-tests.txt}, \protect\path{e2e.txt}, \protect\path{faults.txt}, \protect\path{e3-results.md}, \protect\path{e3-summary.md}, \protect\path{e1-results.md}, \protect\path{train.txt}\\\bottomrule
 \end{tabularx}
 
 \paragraph{Changes since the proposal.}
@@ -702,11 +702,11 @@ Everything runs on one laptop, but in a real building the placement would follow
 \section{Test plan}\label{sec:tests}
 This section maps each requirement to its verification and the recorded evidence. Unit tests run without Docker; the end-to-end test, scenario runs and fault injections run against the full Compose stack. Rows without a recorded result remain planned work and are reported as such.
 {\small\begin{longtable}{>{\raggedright\arraybackslash}p{19mm}>{\raggedright\arraybackslash}p{63mm}>{\raggedright\arraybackslash}p{24mm}>{\raggedright\arraybackslash}p{37mm}}\toprule ID & Verification / metric & Requirement & Available status\\\midrule\endhead
-U1 & Unit tests (\texttt{make test}, 33 tests in 5 files): physics model, control rules and modes, actuator validation, pipeline storage/history, forecast and planner rollout. & FR-01, FR-03, FR-04, FR-05, NFR-03, NFR-05, SAF-01 & 33 passed (e2e test deselected), 12 Oct 2026; \protect\path{docs/results/unit-tests.txt}.\\
+U1 & Unit tests (\texttt{make test}, 34 tests in 5 files): physics model, control rules and modes, actuator validation, pipeline storage/history, forecast and planner rollout. & FR-01, FR-03, FR-04, FR-05, NFR-03, NFR-05, SAF-01 & 34 passed (e2e test deselected), 12 Oct 2026; \protect\path{docs/results/unit-tests.txt}.\\
 S1 & Occupied exceedance episodes, comfort share and empty-room setback over a weekday. & FR-01/02/03 & R8 recorded; comfort fails; full FR-01 episode and FR-03 timing not established.\\
 E3 & Same day/seed: reactive, persistence and timetable; exceedance minutes, peak, target changes, energy. & FR-04 & R6--R8 recorded; lecture-room reduction exceeds 50\%.\\
 E5 & Latest-date holdout; occupancy MAE at six horizons against persistence. & FR-04 & Recorded; fitted linear model loses.\\
-E1 & Fixed-schedule versus autonomous weekday energy, with comfort/air quality together. & NFR-04 & Not executed.\\
+E1 & Fixed-schedule versus autonomous weekday energy, with comfort/air quality together. & NFR-04 & R9 recorded 12 Oct 2026: 445.8 kWh against 282.6 kWh for R8 ($-$37\%); met in the model.\\
 E2 & Hysteresis on/off; changes per five sim-min. & NFR-03 & Not executed; source shows downward-only dwell.\\
 E4 & Increase rooms/rate; decision intervals, backlog, CPU/RAM and breaking point. & NFR-01 & Not executed; five-second configuration is not latency evidence.\\
 F1/F2 & Freeze/drift CO\textsubscript{2}; detect delay, fallback and concentration. & NFR-05 & F1 recorded: first DEGRADED decision about 15 sim-min after injection; ten-minute deadline fails. F2 drift test remains outstanding.\\
@@ -738,15 +738,15 @@ Evidence: \protect\path{docs/results/faults.txt}. F2, F4, F5 and F7 were not exe
 \section{Evaluation and results}
 \label{sec:results}
 \paragraph{Evidence and comparison method.}
-Results below come from \protect\path{docs/results/e3-results.md}, \protect\path{docs/results/e3-summary.md}, \protect\path{docs/results/e3-runs.txt} and \protect\path{docs/results/train.txt}. Final-configuration runs R6, R7 and R8 use simulated 21 October 2026, 07:30--18:00, factor 60 and the same occupancy seed. Control and physics were restarted and the clock reset before each variant; energy counters therefore start at zero. Observed sensors, sampled every two sim-min, were resampled per simulated minute with last-value hold. Occupied means observed occupancy greater than zero. Energy was captured from the final physics counters.
+Results below come from \protect\path{docs/results/e3-results.md}, \protect\path{docs/results/e3-summary.md}, \protect\path{docs/results/e3-runs.txt} and \protect\path{docs/results/train.txt}. Final-configuration runs R6, R7 and R8 use simulated 21 October 2026, 07:30--18:00, factor 60 and the same occupancy seed. Control and physics were restarted and the clock reset before each variant; energy counters therefore start at zero. Observed sensors, sampled every two sim-min, were resampled per simulated minute with last-value hold. Occupied means observed occupancy greater than zero. Energy was captured from the final physics counters. The fixed-schedule baseline R9 (12 October) was run under the same conditions and evaluated with the same script; \protect\path{docs/results/e1-results.md} also recomputes R6--R8 from the stored data with identical results.
 
-\noindent\begin{tabularx}{\linewidth}{Xrrr}\toprule Metric & R6 reactive & R7 persistence & R8 timetable\\\midrule
-Lecture occupied sim-min & 473 & 475 & 465\\
-Lecture occupied CO\textsubscript{2} $>1000$ sim-min & 122 & 2 & 0\\
-Lecture peak CO\textsubscript{2} (ppm) & 1276 & 1002 & 920\\
-Lecture ventilation target changes & 36 & 17 & 10\\
-Lecture occupied comfort (\%) & 70.2 & 68.8 & 84.7\\
-All-room radiator + AHU (kWh) & 259.5 & 280.7 & 282.6\\\bottomrule\end{tabularx}
+\noindent\begin{tabularx}{\linewidth}{Xrrrr}\toprule Metric & R6 reactive & R7 persistence & R8 timetable & R9 fixed schedule\\\midrule
+Lecture occupied sim-min & 473 & 475 & 465 & 476\\
+Lecture occupied CO\textsubscript{2} $>1000$ sim-min & 122 & 2 & 0 & 0\\
+Lecture peak CO\textsubscript{2} (ppm) & 1276 & 1002 & 920 & 917\\
+Lecture ventilation target changes & 36 & 17 & 10 & 2\\
+Lecture occupied comfort (\%) & 70.2 & 68.8 & 84.7 & 96.4\\
+All-room radiator + AHU (kWh) & 259.5 & 280.7 & 282.6 & 445.8\\\bottomrule\end{tabularx}
 
 \begin{figure}[H]\centering
 \begin{tikzpicture}
@@ -761,7 +761,7 @@ All-room radiator + AHU (kWh) & 259.5 & 280.7 & 282.6\\\bottomrule\end{tabularx}
 \end{axis}\end{tikzpicture}
 \caption{Occupied CO\textsubscript{2} exceedance in the lecture rooms, runs R6--R8. Energy and comfort must be assessed alongside this air-quality metric.}\label{fig:results}
 \end{figure}
-Figure~\ref{fig:results} summarises the exceedance minutes. Both planner variants exceed FR-04's 50\% reduction criterion for the two lecture rooms in this comparison: persistence reduces minutes by about 98\%, timetable by 100\%. Timetable also improves lecture comfort to 84.7\%, still below FR-02's 90\%. Relative to reactive-only, all-room heat energy rises by about 8.2\% with persistence and 8.9\% with timetable. NFR-04 specifies a fixed-schedule baseline, which was not run, so this comparison neither establishes nor refutes that requirement. Figure~\ref{fig:planner} shows that both planner variants keep A117 below 1000 ppm across its three lectures, while reactive control alone repeatedly overshoots; Figure~\ref{fig:s1} shows a full R8 day in A109 (A117 in Figure~\ref{fig:s1-a117}).
+Figure~\ref{fig:results} summarises the exceedance minutes. Both planner variants exceed FR-04's 50\% reduction criterion for the two lecture rooms in this comparison: persistence reduces minutes by about 98\%, timetable by 100\%. Timetable also improves lecture comfort to 84.7\%, still below FR-02's 90\%. Relative to reactive-only, all-room heat energy rises by about 8.2\% with persistence and 8.9\% with timetable. This comparison alone does not decide NFR-04, which is assessed against the fixed-schedule baseline below. Figure~\ref{fig:planner} shows that both planner variants keep A117 below 1000 ppm across its three lectures, while reactive control alone repeatedly overshoots; Figure~\ref{fig:s1} shows a full R8 day in A109 (A117 in Figure~\ref{fig:s1-a117}).
 
 \begin{figure}[H]\centering
 \includegraphics[width=0.9\linewidth]{e3_planner_A117.png}
@@ -771,6 +771,9 @@ Figure~\ref{fig:results} summarises the exceedance minutes. Both planner variant
 \includegraphics[width=0.8\linewidth]{s1_A109.png}
 \caption{A109, run R8 (timetable): observed CO\textsubscript{2}, ventilation, temperature and occupancy over the simulated weekday.}\label{fig:s1}
 \end{figure}
+
+\paragraph{Fixed-schedule baseline (E1, NFR-04).}
+R9 repeats the same simulated day with the controller replaced by a timer (\texttt{CONTROL\_MODE=fixed-schedule}): ventilation level 2 and 21 $^\circ$C from 07:30 to 17:00, level 0 and 17 $^\circ$C otherwise, without sensors or plans; the planner was stopped. Its occupied lecture minutes (476) match R6--R8 (465--475), so the conditions are comparable. The baseline used 445.8 kWh, 58\% more than R8 (282.6 kWh); the final system therefore needs 37\% less energy, and NFR-04 is met in the model. Radiators account for 104 kWh of the difference, mainly in rooms that stay heated while empty (A109 after its only lecture: +56 kWh), and AHU supply-air heating for 59 kWh, because every room is ventilated at level 2 for 9.5 simulated hours. The baseline was not worse for air quality: it also had zero lecture-room exceedances (peak 917 ppm), contrary to our prediction committed before the run (\protect\path{docs/results/e1-predictions.md}). This indicates that R6's exceedances come from the reactive rules (a lecture starts at level 0, ventilation rises only after CO\textsubscript{2} does, and the threshold cycle described below), not from insufficient level-2 capacity; the timer is already at level 2 when students arrive, which is the effect the planner reproduces. Heating from 07:30 also gave the timer 96.4\% lecture comfort, which would meet FR-02. In the fika room it had fewer exceedance minutes (6 against 28) but a higher peak (1380 ppm), as it has no safety override. Against a conventional schedule, the autonomous system's benefit is therefore energy, paid for with lower comfort; timetable-driven preheating is the obvious lever. One run per variant and our own choice of schedule (level 2, 07:30--17:00) make the 37\% specific to this scenario.
 
 \paragraph{Whole-building limits.}\mbox{}\par
 \noindent\begin{tabularx}{\linewidth}{lrrrX}\toprule R8 room & Exceed sim-min & Peak ppm & Comfort (\%) & Heat + AHU (kWh)\\\midrule
@@ -793,7 +796,7 @@ R2/R3 are excluded because the old history window could return another replay's 
 
 There is one run per final variant. Sensor noise, clock resets and differing recorded occupied durations limit causal precision; no confidence interval is justified. Reactive results also depend on tuning: level 2 can settle below the 900-ppm step-down point, after which level 1 allows concentration to rise again. Part of the planner benefit therefore compensates for a threshold cycle. Retuning reactive hysteresis is a relevant simpler comparator.
 
-The useful conclusion is conditional: booked anticipation improves this recorded scenario, with higher energy and remaining comfort/fika deficiencies.
+The useful conclusion is conditional: booked anticipation improves this recorded scenario, with higher energy and remaining comfort/fika deficiencies. Against a fixed schedule, the whole system's measured advantage is energy (37\% less), not air quality or comfort.
 
 \paragraph{Additional temperature metric.}
 Most remaining comfort misses are slightly cool (18--20 $^\circ$C) rather than unsafe: occupied time within 18--24 $^\circ$C is 95.6\%, 93.3\% and 99.3\% for R6, R7 and R8 in the lecture rooms. In R8 it is 100.0\% in A109, 99.1\% in A117, 87.6\% in A110 and 99.6\% in A113C. FR-02 still fails against its 20--24 $^\circ$C target.
@@ -843,14 +846,14 @@ Unauthenticated lab APIs/topics & Spoofed commands, fault injection, unrestricte
 \paragraph{Accepted trade-offs.}
 Independent device containers support isolated faults at a resource cost. MQTT offers decoupled fan-out and latest-value retention, while requiring shared-broker recovery and duplicate handling. JSONL/Parquet keeps evidence transparent without a database server, but full scans/rebuilds become expensive. A rule controller plus advisory planner keeps precedence explainable and allows history failure without stopping reactive control; it lacks joint comfort/energy optimisation.
 
-Planning improved air quality and lecture comfort in the recorded final scenario at about 9\% more heat energy than reactive-only. High advice can also remain accepted for 60 sim-min and consume unnecessary heat. Timetable simplicity proved more useful than the rejected learned model under this simulator, but its attendance assumptions limit generalisation. More conservative sensor detection reduces delay at the cost of false alarms on stable rounded values. None of these choices removes physical capacity limits or establishes the unmeasured failure guarantees.
+Planning improved air quality and lecture comfort in the recorded final scenario at about 9\% more heat energy than reactive-only; against a fixed schedule the whole system still used 37\% less energy, but gave lower lecture comfort (84.7 against 96.4\%) at the same lecture-room air quality. High advice can also remain accepted for 60 sim-min and consume unnecessary heat. Timetable simplicity proved more useful than the rejected learned model under this simulator, but its attendance assumptions limit generalisation. More conservative sensor detection reduces delay at the cost of false alarms on stable rounded values. None of these choices removes physical capacity limits or establishes the unmeasured failure guarantees.
 
 \paragraph{Next steps.}
 First address concrete quality and recovery gaps: elapsed-time frozen detection, source freshness/range/future-time checks, command refresh and reached-state reconciliation. Introduce run/session/event identity to isolate replay windows and deduplicate retransmissions; archive timestamped radiator and AHU power/energy before physics resets.
 
 Next improve comfort and decision quality: extend timetable-driven preheating, use observed temperature in heat decisions, retune reactive hysteresis as a simpler comparator, and improve unscheduled fika demand. Correct the weather phase and calibrate thermal and flow parameters. Compare attendance-aware forecasts against persistence on independent dates and seeds before deploying a learned model.
 
-Finally complete the outstanding evidence: fixed-schedule energy comparison, repeated matched weekdays, episode-level CO\textsubscript{2} recovery, setback timing, fault/restart recovery, loss checks and scaling to a breaking point. Preserve configuration, seed, model version and run windows with every result. The evidence supports a conditional lecture-room improvement; comfort, unscheduled rooms and operational guarantees remain priorities.
+Finally complete the outstanding evidence: repeated matched weekdays (including the fixed-schedule baseline), episode-level CO\textsubscript{2} recovery, setback timing, fault/restart recovery, loss checks and scaling to a breaking point. Preserve configuration, seed, model version and run windows with every result. The evidence supports a conditional lecture-room improvement; comfort, unscheduled rooms and operational guarantees remain priorities.
 
 \section*{Contribution statement}\addcontentsline{toc}{section}{Contribution statement}
 \noindent{\small\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{25mm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X}\toprule
