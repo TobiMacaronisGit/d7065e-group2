@@ -101,7 +101,10 @@ class Storage:
         this returned 22 Oct 10:07-10:37). Callers that know the time (the planner) therefore pass
         `until` = their own sim time and `max_age_s`, which keeps only rows received in the last
         max_age_s wall seconds, so rows from an earlier replay of the same sim times are ignored."""
-        glob = str(self.root / "bronze" / "*" / "sensor.jsonl")
+        files = self._sensor_files(until, minutes)
+        if not files:
+            return []
+        src = ", ".join(f"'{f}'" for f in files)
         filt, params = "room = ? AND type = ? AND level = ?", [room, sensor_type, level]
         if max_age_s:
             filt += " AND CAST(recv_ts AS TIMESTAMPTZ) >= CAST(? AS TIMESTAMPTZ)"
@@ -116,7 +119,7 @@ class Storage:
             with self._connection() as con:
                 con.execute("SET TimeZone = 'UTC'")      # naive timestamps in bronze are UTC, on every host
                 rows = con.execute(
-                    f"""WITH r AS (SELECT * FROM read_json_auto('{glob}', union_by_name=true) WHERE {filt}),
+                    f"""WITH r AS (SELECT * FROM read_json_auto([{src}], union_by_name=true) WHERE {filt}),
                              m AS ({anchor})
                         SELECT sim_ts, ts, value, seq, quality FROM r, m
                         WHERE CAST(sim_ts AS TIMESTAMPTZ) >= m.latest - INTERVAL (?) MINUTE
@@ -128,15 +131,42 @@ class Storage:
             raise
         return [{"sim_ts": r[0], "ts": r[1], "value": r[2], "seq": r[3], "quality": r[4]} for r in rows]
 
+    def _sensor_files(self, until: str | None, minutes: int) -> list[str]:
+        """Bronze sensor files history() has to scan. With `until` only the sim-dates the window can touch
+        (one extra day on each side, since bronze/<date>/ comes from the sim_ts string, offsets included)
+        instead of every day ever recorded. Found 12 Oct: the planner calls history 15x per 10 s cycle;
+        scanning all of bronze each time kept _query_lock busy and delayed every Grafana query by ~2 s."""
+        everything = sorted(str(f) for f in (self.root / "bronze").glob("*/sensor.jsonl"))
+        if not until:
+            return everything                     # anchor = latest stored reading -> needs all days
+        try:
+            end = datetime.fromisoformat(until.replace("Z", "+00:00"))
+        except ValueError:
+            return everything
+        day, last = (end - timedelta(minutes=minutes, days=1)).date(), (end + timedelta(days=1)).date()
+        files = []
+        while day <= last:
+            f = self.root / "bronze" / day.isoformat() / "sensor.jsonl"
+            if f.exists():
+                files.append(str(f))
+            day += timedelta(days=1)
+        return files
+
     def query(self, sql: str) -> list[dict[str, Any]]:
-        """Read-only SQL over bronze/silver for Grafana (Infinity) and ad-hoc analysis.
-        Tables are exposed as views: sensor, actuator, plan, decision, health (bronze, live)."""
+        """Read-only SQL for Grafana (Infinity) and ad-hoc analysis.
+        Tables are exposed as views: sensor, actuator, plan, decision, health over silver/<kind>.parquet,
+        so they are up to one compaction interval (COMPACT_S) behind live. A kind without a parquet file
+        yet falls back to bronze. Found 12 Oct: scanning all bronze JSONL per request took 4-5 s at
+        ~700k rows, and behind _query_lock the Grafana panels queued up into Infinity timeouts."""
         if not sql.strip().lower().startswith(("select", "with")):
             raise ValueError("read-only endpoint: only SELECT/WITH queries are allowed")
         with self._connection() as con:
             for kind in KINDS:
+                silver = self.root / "silver" / f"{kind}.parquet"
                 glob = str(self.root / "bronze" / "*" / f"{kind}.jsonl")
-                if list((self.root / "bronze").glob(f"*/{kind}.jsonl")):
+                if silver.exists():
+                    con.execute(f"CREATE VIEW {kind} AS SELECT * FROM read_parquet('{silver}')")
+                elif list((self.root / "bronze").glob(f"*/{kind}.jsonl")):
                     con.execute(f"CREATE VIEW {kind} AS SELECT * FROM read_json_auto('{glob}', union_by_name=true)")
             cur = con.execute(sql)
             cols = [d[0] for d in cur.description]
